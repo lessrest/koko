@@ -5,10 +5,13 @@ import qualified Koko as K
 main :: IO ()
 main = hspec $ do
   describe "parser" $ do
+    let (->>) = shouldParseTo
+    
     it "should parse `@foo'" $ do
-      ["@foo"] `shouldParseTo` (K.EApp (K.EVar "@foo") [])
+      ["@foo"] ->> (K.EApp (K.EVar "@foo") [])
+      
     it "should parse `@print Hello, world!'" $ do
-      ["@print", "Hello,", "world!"] `shouldParseTo`
+      ["@print", "Hello,", "world!"] ->>
         (K.EApp (K.EVar "@print") [K.ESym "Hello,", K.ESym "world!"])
 
 shouldParseTo :: [K.Token] -> K.Expr -> Expectation
