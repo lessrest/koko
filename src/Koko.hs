@@ -3,6 +3,7 @@ module Koko where
 import Control.Applicative
   ((<$>), (<*>), (<*), (*>),
    pure, many)
+import Control.Monad (when)
 
 import Text.Parsec.Combinator (choice)
 import Text.Parsec.Error (ParseError)
@@ -47,4 +48,11 @@ expr = choice [simple, application, abstraction]
     simple      = choice [variable, symbol, index]
     variable    = EVar <$> tokenThat ((== '@') . head)
     symbol      = ESym <$> tokenThat (not . (`elem` "%@[]{}") . head)
-    index       = tokenThat (== "%") *> pure (EIdx 1)
+    index       = (tokenThat (== "%") *> pure (EIdx 1)) <|> numberedIndex
+
+numberedIndex :: Parser Expr
+numberedIndex = do
+  (_:s) <- tokenThat ((== '%') . head)
+  let [(x, [])] = reads s
+  when (x <= 0) (fail "Variable index must be positive")
+  return (EIdx x)

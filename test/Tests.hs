@@ -26,8 +26,20 @@ main = hspec $ do
     it "should parse `%'" $ do
       ["%"] ->> EIdx 1
 
+    it "should parse `%1'" $ do
+      ["%1"] ->> EIdx 1
+
+    it "fails on `%0'" $ do
+      failsOn (words "%0")
+
 shouldParseTo :: [Token] -> Expr -> Expectation
 shouldParseTo xs e =
   case parse xs of
    Left err -> expectationFailure (show err)
    Right e' -> e' `shouldBe` e
+
+failsOn :: [Token] -> Expectation
+failsOn xs =
+  case parse xs of
+   Left _ -> return ()
+   Right x -> expectationFailure ("Parsed to (" ++ show x ++ ")")
