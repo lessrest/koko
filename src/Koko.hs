@@ -33,6 +33,7 @@ skip = (>> return ())
 data Expr = EVar String
           | EApp Expr [Expr]
           | ESym String
+          | EIdx Int
           | EAbs Expr
           | ENil
           deriving (Eq, Show)
@@ -43,7 +44,7 @@ expr = choice [simple, application, abstraction]
     application = try (word "[" *> (EApp <$> expr <*> many expr) <* word "]")
     abstraction = EAbs <$> (word "{" >> try body)
     body        = (word "}" *> pure ENil) <|> (expr <* word "}")
-    simple      = choice [variable, symbol]
+    simple      = choice [variable, symbol, index]
     variable    = EVar <$> tokenThat ((== '@') . head)
-    symbol      = ESym <$> tokenThat (not . (`elem` "@[]{}") . head)
-
+    symbol      = ESym <$> tokenThat (not . (`elem` "%@[]{}") . head)
+    index       = tokenThat (== "%") *> pure (EIdx 1)

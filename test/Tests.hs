@@ -23,6 +23,9 @@ main = hspec $ do
     it "should parse `{ { a } }'" $ do
       words "{ { a } }" ->> EAbs (EAbs (ESym "a"))
 
+    it "should parse `%'" $ do
+      ["%"] ->> EIdx 1
+
 shouldParseTo :: [Token] -> Expr -> Expectation
 shouldParseTo xs e =
   case parse xs of
