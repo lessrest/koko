@@ -8,11 +8,11 @@ main = hspec $ do
     let (->>) = shouldParseTo
     
     it "should parse `@foo'" $ do
-      ["@foo"] ->> (K.EApp (K.EVar "@foo") [])
+      ["@foo"] ->> K.EApp (K.EVar "@foo") []
       
     it "should parse `@print Hello, world!'" $ do
       ["@print", "Hello,", "world!"] ->>
-        (K.EApp (K.EVar "@print") [K.ESym "Hello,", K.ESym "world!"])
+        K.EApp (K.EVar "@print") [K.ESym "Hello,", K.ESym "world!"]
 
 shouldParseTo :: [K.Token] -> K.Expr -> Expectation
 shouldParseTo xs e =
