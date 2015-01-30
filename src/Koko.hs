@@ -1,10 +1,14 @@
 module Koko where
 
 import Control.Applicative
+  ((<$>), (<*>), (<*), (*>),
+   many)
 
-import qualified Text.Parsec.Combinator as P
-import qualified Text.Parsec.Error as P
-import qualified Text.Parsec.Pos as P
+import Text.Parsec.Combinator (choice)
+import Text.Parsec.Error (ParseError)
+import Text.Parsec.Pos (SourcePos, newPos)
+import Text.Parsec.Prim (Parsec, token, try)
+
 import qualified Text.Parsec.Prim as P
 
 data Expr = EVar String
@@ -13,26 +17,26 @@ data Expr = EVar String
           deriving (Eq, Show)
 
 type Token = String
-type Token' = (P.SourcePos, Token)
+type Token' = (SourcePos, Token)
 type Stream = [Token']
-type Parser a = P.Parsec Stream () a
+type Parser a = Parsec Stream () a
 
 tokenThat :: (Token -> Bool) -> Parser Token
-tokenThat p = P.token show fst p'
+tokenThat p = token show fst p'
   where p' (_, t) = if p t then Just t else Nothing
 
-parse :: [Token] -> Either P.ParseError Expr
+parse :: [Token] -> Either ParseError Expr
 parse xs = P.parse expr "" xs'
-  where xs' = [(P.newPos "" 1 i, x) | (x, i) <- zip xs [1..]]
+  where xs' = [(newPos "" 1 i, x) | (x, i) <- zip xs [1..]]
 
 word :: Token -> Parser ()
 word c = tokenThat (== c) >> return ()
 
-expr :: P.Parsec [Token'] () Expr
-expr = P.choice [application, simple]
+expr :: Parsec [Token'] () Expr
+expr = choice [application, simple]
   where
-    application = P.try (word "[" *> (EApp <$> expr <*> P.many expr) <* word "]")
-    simple      = P.choice [variable, symbol]
+    application = try (word "[" *> (EApp <$> expr <*> many expr) <* word "]")
+    simple      = choice [variable, symbol]
     variable    = EVar <$> tokenThat ((== '@') . head)
     symbol      = ESym <$> tokenThat (not . (`elem` "@[]") . head)
 
