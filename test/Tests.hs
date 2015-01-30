@@ -6,6 +6,7 @@ main :: IO ()
 main = hspec $ do
   describe "parser" $ do
     failsOn "%0"
+    failsOn "a b"
     
     "@foo"      ->> EVar "@foo"
     "{ }"       ->> EAbs ENil

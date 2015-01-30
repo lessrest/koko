@@ -5,7 +5,7 @@ import Control.Applicative
    pure, many)
 import Control.Monad (when)
 
-import Text.Parsec.Combinator (choice)
+import Text.Parsec.Combinator (choice, eof)
 import Text.Parsec.Error (ParseError)
 import Text.Parsec.Pos (SourcePos, newPos)
 import Text.Parsec.Prim (Parsec, token, try, (<|>))
@@ -22,7 +22,7 @@ tokenThat p = token show fst p'
   where p' (_, t) = if p t then Just t else Nothing
 
 parse :: [Token] -> Either ParseError Expr
-parse xs = P.parse expr "" xs'
+parse xs = P.parse (expr <* eof) "" xs'
   where xs' = [(newPos "" 1 i, x) | (x, i) <- zip xs [1..]]
 
 word :: Token -> Parser ()
