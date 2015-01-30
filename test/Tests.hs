@@ -17,6 +17,12 @@ main = hspec $ do
     it "should parse `{ }'" $ do
       ["{", "}"] ->> EAbs ENil
 
+    it "should parse `{ a }'" $ do
+      ["{", "a", "}"] ->> EAbs (ESym "a")
+
+    it "should parse `{ { a } }'" $ do
+      ["{", "{", "a", "}", "}"] ->> EAbs (EAbs (ESym "a"))
+
 shouldParseTo :: [Token] -> Expr -> Expectation
 shouldParseTo xs e =
   case parse xs of

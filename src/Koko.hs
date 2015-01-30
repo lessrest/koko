@@ -7,7 +7,7 @@ import Control.Applicative
 import Text.Parsec.Combinator (choice)
 import Text.Parsec.Error (ParseError)
 import Text.Parsec.Pos (SourcePos, newPos)
-import Text.Parsec.Prim (Parsec, token, try)
+import Text.Parsec.Prim (Parsec, token, try, (<|>))
 
 import qualified Text.Parsec.Prim as P
 
@@ -41,7 +41,8 @@ expr :: Parsec [Token'] () Expr
 expr = choice [simple, application, abstraction]
   where
     application = try (word "[" *> (EApp <$> expr <*> many expr) <* word "]")
-    abstraction = EAbs <$> (word "{" >> try (word "}" >> pure ENil))
+    abstraction = EAbs <$> (word "{" >> try body)
+    body        = (word "}" *> pure ENil) <|> (expr <* word "}")
     simple      = choice [variable, symbol]
     variable    = EVar <$> tokenThat ((== '@') . head)
     symbol      = ESym <$> tokenThat (not . (`elem` "@[]{}") . head)
