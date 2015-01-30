@@ -10,7 +10,25 @@ category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
 
+library
+  hs-source-dirs: src
+  exposed-modules: Koko
+  build-depends: base >=4.7 && <4.8
+  default-language: Haskell2010
+
 executable "::"
-  main-is:             Main.hs
-  build-depends:       base >=4.7 && <4.8
+  main-is: Main.hs
+  build-depends: base >=4.7 && <4.8,
+                 koko
   default-language:    Haskell2010
+
+test-suite tests
+   hs-source-dirs: test
+   main-is: Tests.hs
+   ghc-options: -Wall
+   default-extensions: OverloadedStrings
+   type: exitcode-stdio-1.0
+   build-depends: base >=4.7 && <4.8,
+                  koko,
+                  hspec >= 1.8
+   default-language: Haskell2010
