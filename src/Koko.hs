@@ -40,6 +40,7 @@ data Expr = EVar String
           deriving (Eq, Show)
 
 data Value = VSym String
+           | VAbs Expr
              deriving (Eq, Show)
 
 expr :: Parsec [Token'] () Expr
@@ -61,5 +62,11 @@ numberedIndex = do
   return (EIdx x)
 
 evaluate :: Expr -> Either String Value
-evaluate (ESym s) = Right (VSym s)
+evaluate (ESym s) = pure (VSym s)
+evaluate (EAbs e) = pure (VAbs e)
+evaluate (EApp e []) = apply =<< evaluate e
 evaluate _ = Left "Evaluation error"
+
+apply :: Value -> Either String Value
+apply (VAbs e) = evaluate e
+apply _ = Left "Application error"
