@@ -11,10 +11,10 @@ main = hspec $ do
     let (->>) = shouldParseTo
     
     it "should parse `@foo'" $ do
-      ["@foo"] ->> EApp (EVar "@foo") []
+      ["@foo"] ->> EVar "@foo"
       
-    it "should parse `@print Hello, world!'" $ do
-      ["@print", "Hello,", "world!"] ->>
+    it "should parse `[ @print Hello, world! ]'" $ do
+      ["[", "@print", "Hello,", "world!", "]"] ->>
         EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
 
 shouldParseTo :: [Token] -> Expr -> Expectation

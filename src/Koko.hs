@@ -25,10 +25,14 @@ parse :: [Token] -> Either P.ParseError Expr
 parse xs = P.parse expr "" xs'
   where xs' = [(P.newPos "" 1 i, x) | (x, i) <- zip xs [1..]]
 
+word :: Token -> Parser ()
+word c = tokenThat (== c) >> return ()
+
 expr :: P.Parsec [Token'] () Expr
 expr = P.choice [application, simple]
   where
-    application = P.try $ EApp <$> variable <*> P.many simple
+    application = P.try (word "[" *> (EApp <$> expr <*> P.many expr) <* word "]")
     simple      = P.choice [variable, symbol]
-    variable    = EVar <$> tokenThat ((== "@") . take 1)
-    symbol      = ESym <$> tokenThat ((/= "@") . take 1)
+    variable    = EVar <$> tokenThat ((== '@') . head)
+    symbol      = ESym <$> tokenThat (not . (`elem` "@[]") . head)
+
