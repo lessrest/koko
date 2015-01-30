@@ -1,13 +1,18 @@
 import Test.Hspec
-
 import Koko
 
 main :: IO ()
 main = hspec $ do
-  describe "parser" $ do
+  describe "parse failures" $ do
+    let failsOn = expectParseFailure
+        
     failsOn "%0"
     failsOn "a b"
-    
+    failsOn `mapM_` (map (:"") "@[]{}")
+
+  describe "parse successes" $ do
+    let (->>) = shouldParseTo
+        
     "@foo"      ->> EVar "@foo"
     "{ }"       ->> EAbs ENil
     "{ a }"     ->> EAbs (ESym "a")
@@ -16,11 +21,12 @@ main = hspec $ do
     "%"         ->> EIdx 1   
     "%1"        ->> EIdx 1
     "%25"       ->> EIdx 25
-      
+
+  describe "larger examples" $ do
     "[ @print Hello, world! ]" ->>
       EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
-    
-  where (->>) = shouldParseTo
+
+------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr -> Spec
 shouldParseTo s e =
@@ -29,8 +35,8 @@ shouldParseTo s e =
       Left err -> expectationFailure (show err)
       Right e' -> e' `shouldBe` e
 
-failsOn :: String -> Spec
-failsOn s =
+expectParseFailure :: String -> Spec
+expectParseFailure s =
   it ("fails on `" ++ s ++ "'") $
     case parse (words s) of
       Left _ -> return ()
