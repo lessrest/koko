@@ -1,2 +1,5 @@
+import Koko (parse)
+import System.Environment
+
 main :: IO ()
-main = putStrLn "Hello, world!"
+main = getArgs >>= (either (fail . show) print) . parse

@@ -18,7 +18,7 @@ type Stream = [Token']
 type Parser a = Parsec Stream () a
 
 tokenThat :: (Token -> Bool) -> Parser Token
-tokenThat p = token show fst p'
+tokenThat p = token (show . snd) fst p'
   where p' (_, t) = if p t then Just t else Nothing
 
 parse :: [Token] -> Either ParseError Expr
