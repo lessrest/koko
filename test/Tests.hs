@@ -5,41 +5,31 @@ import Koko
 main :: IO ()
 main = hspec $ do
   describe "parser" $ do
-    let (->>) = shouldParseTo
+    failsOn "%0"
     
-    it "should parse `@foo'" $ do
-      ["@foo"] ->> EVar "@foo"
+    "@foo"      ->> EVar "@foo"
+    "{ }"       ->> EAbs ENil
+    "{ a }"     ->> EAbs (ESym "a")
+    "{ { a } }" ->> EAbs (EAbs (ESym "a"))
+    "%"         ->> EIdx 1   
+    "%1"        ->> EIdx 1
+    "%25"       ->> EIdx 25
       
-    it "should parse `[ @print Hello, world! ]'" $ do
-      words "[ @print Hello, world! ]" ->>
-        EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
+    "[ @print Hello, world! ]" ->>
+      EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
+    
+  where (->>) = shouldParseTo
 
-    it "should parse `{ }'" $ do
-      words "{ }" ->> EAbs ENil
+shouldParseTo :: String -> Expr -> Spec
+shouldParseTo s e =
+  it ("should parse `" ++ s ++ "'") $
+    case parse (words s) of
+      Left err -> expectationFailure (show err)
+      Right e' -> e' `shouldBe` e
 
-    it "should parse `{ a }'" $ do
-      words "{ a }" ->> EAbs (ESym "a")
-
-    it "should parse `{ { a } }'" $ do
-      words "{ { a } }" ->> EAbs (EAbs (ESym "a"))
-
-    it "should parse `%'" $ do
-      ["%"] ->> EIdx 1
-
-    it "should parse `%1'" $ do
-      ["%1"] ->> EIdx 1
-
-    it "fails on `%0'" $ do
-      failsOn (words "%0")
-
-shouldParseTo :: [Token] -> Expr -> Expectation
-shouldParseTo xs e =
-  case parse xs of
-   Left err -> expectationFailure (show err)
-   Right e' -> e' `shouldBe` e
-
-failsOn :: [Token] -> Expectation
-failsOn xs =
-  case parse xs of
-   Left _ -> return ()
-   Right x -> expectationFailure ("Parsed to (" ++ show x ++ ")")
+failsOn :: String -> Spec
+failsOn s =
+  it ("fails on `" ++ s ++ "'") $
+    case parse (words s) of
+      Left _ -> return ()
+      Right x -> expectationFailure ("Parsed to (" ++ show x ++ ")")
