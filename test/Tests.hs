@@ -8,11 +8,12 @@ main = hspec $ do
         
     failsOn "%0"
     failsOn "a b"
-    failsOn `mapM_` (map (:"") "@[]{}")
+    failsOn `mapM_` (map (:"") "[]{}")
 
   describe "parse successes" $ do
     let (->>) = shouldParseTo
-        
+
+    "@"         ->> EVar "@"
     "@foo"      ->> EVar "@foo"
     "{ }"       ->> EAbs ENil
     "{ a }"     ->> EAbs (ESym "a")
@@ -22,9 +23,9 @@ main = hspec $ do
     "%1"        ->> EIdx 1
     "%25"       ->> EIdx 25
 
-  describe "larger examples" $ do
-    "[ @print Hello, world! ]" ->>
-      EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
+    describe "larger examples" $ do
+      "[ @print Hello, world! ]" ->>
+        EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
 
 ------------------------------------------------------------------------
 
