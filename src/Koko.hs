@@ -2,7 +2,7 @@ module Koko where
 
 import Control.Applicative
   ((<$>), (<*>), (<*), (*>),
-   many)
+   pure, many)
 
 import Text.Parsec.Combinator (choice)
 import Text.Parsec.Error (ParseError)
@@ -10,11 +10,6 @@ import Text.Parsec.Pos (SourcePos, newPos)
 import Text.Parsec.Prim (Parsec, token, try)
 
 import qualified Text.Parsec.Prim as P
-
-data Expr = EVar String
-          | EApp Expr [Expr]
-          | ESym String
-          deriving (Eq, Show)
 
 type Token = String
 type Token' = (SourcePos, Token)
@@ -30,13 +25,24 @@ parse xs = P.parse expr "" xs'
   where xs' = [(newPos "" 1 i, x) | (x, i) <- zip xs [1..]]
 
 word :: Token -> Parser ()
-word c = tokenThat (== c) >> return ()
+word c = skip (tokenThat (== c))
+
+skip :: Parser a -> Parser ()
+skip = (>> return ())
+
+data Expr = EVar String
+          | EApp Expr [Expr]
+          | ESym String
+          | EAbs Expr
+          | ENil
+          deriving (Eq, Show)
 
 expr :: Parsec [Token'] () Expr
-expr = choice [application, simple]
+expr = choice [simple, application, abstraction]
   where
     application = try (word "[" *> (EApp <$> expr <*> many expr) <* word "]")
+    abstraction = EAbs <$> (word "{" >> try (word "}" >> pure ENil))
     simple      = choice [variable, symbol]
     variable    = EVar <$> tokenThat ((== '@') . head)
-    symbol      = ESym <$> tokenThat (not . (`elem` "@[]") . head)
+    symbol      = ESym <$> tokenThat (not . (`elem` "@[]{}") . head)
 

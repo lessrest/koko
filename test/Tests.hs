@@ -1,9 +1,6 @@
 import Test.Hspec
 
-import Koko (parse, Token, Expr,
-             Expr (EApp,
-                   EVar,
-                   ESym))
+import Koko
 
 main :: IO ()
 main = hspec $ do
@@ -16,6 +13,9 @@ main = hspec $ do
     it "should parse `[ @print Hello, world! ]'" $ do
       ["[", "@print", "Hello,", "world!", "]"] ->>
         EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
+
+    it "should parse `{ }'" $ do
+      ["{", "}"] ->> EAbs ENil
 
 shouldParseTo :: [Token] -> Expr -> Expectation
 shouldParseTo xs e =
