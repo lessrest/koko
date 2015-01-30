@@ -11,17 +11,17 @@ main = hspec $ do
       ["@foo"] ->> EVar "@foo"
       
     it "should parse `[ @print Hello, world! ]'" $ do
-      ["[", "@print", "Hello,", "world!", "]"] ->>
+      words "[ @print Hello, world! ]" ->>
         EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
 
     it "should parse `{ }'" $ do
-      ["{", "}"] ->> EAbs ENil
+      words "{ }" ->> EAbs ENil
 
     it "should parse `{ a }'" $ do
-      ["{", "a", "}"] ->> EAbs (ESym "a")
+      words "{ a }" ->> EAbs (ESym "a")
 
     it "should parse `{ { a } }'" $ do
-      ["{", "{", "a", "}", "}"] ->> EAbs (EAbs (ESym "a"))
+      words "{ { a } }" ->> EAbs (EAbs (ESym "a"))
 
 shouldParseTo :: [Token] -> Expr -> Expectation
 shouldParseTo xs e =
