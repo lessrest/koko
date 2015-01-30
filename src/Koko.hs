@@ -39,6 +39,9 @@ data Expr = EVar String
           | ENil
           deriving (Eq, Show)
 
+data Value = VSym String
+             deriving (Eq, Show)
+
 expr :: Parsec [Token'] () Expr
 expr = choice [simple, application, abstraction]
   where
@@ -56,3 +59,7 @@ numberedIndex = do
   let [(x, [])] = reads s
   when (x <= 0) (fail "Variable index must be positive")
   return (EIdx x)
+
+evaluate :: Expr -> Either String Value
+evaluate (ESym s) = Right (VSym s)
+evaluate _ = Left "Evaluation error"

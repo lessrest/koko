@@ -27,6 +27,11 @@ main = hspec $ do
       "[ @print Hello, world! ]" ->>
         EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
 
+  describe "evaluation" $ do
+    let (->>) = shouldEvaluateTo
+
+    "a" ->> VSym "a"
+
 ------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr -> Spec
@@ -42,3 +47,13 @@ expectParseFailure s =
     case parse (words s) of
       Left _ -> return ()
       Right x -> expectationFailure ("Parsed to (" ++ show x ++ ")")
+
+shouldEvaluateTo :: String -> Value -> Spec
+shouldEvaluateTo s v =
+  it ("should evaluate `" ++ s ++ "'") $
+    case parse (words s) of
+      Left err -> expectationFailure (show err)
+      Right e ->
+        case evaluate e of
+          Left err -> expectationFailure (show err)
+          Right v' -> v' `shouldBe` v
