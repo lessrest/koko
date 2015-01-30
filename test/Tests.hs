@@ -11,6 +11,7 @@ main = hspec $ do
     "{ }"       ->> EAbs ENil
     "{ a }"     ->> EAbs (ESym "a")
     "{ { a } }" ->> EAbs (EAbs (ESym "a"))
+    "[ { a } ]" ->> EApp (EAbs (ESym "a")) []
     "%"         ->> EIdx 1   
     "%1"        ->> EIdx 1
     "%25"       ->> EIdx 25
