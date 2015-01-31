@@ -4,11 +4,9 @@ import Koko
 main :: IO ()
 main = hspec $ do
   describe "parse failures" $ do
-    let failsOn = expectParseFailure
-        
-    failsOn "%0"
-    failsOn "a b"
-    failsOn `mapM_` (map (:"") "[]{}")
+    expectParseFailure "%0"
+    expectParseFailure "a b"
+    expectParseFailure `mapM_` (map (:"") "[]{}")
 
   describe "parse successes" $ do
     let (->>) = shouldParseTo
