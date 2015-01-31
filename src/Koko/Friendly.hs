@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Koko.Friendly where
 
-import System.IO
+import System.Console.Haskeline
 
 import Koko.Types
 
@@ -16,8 +16,9 @@ showProblem =
         UnknownError ->
           "Unknown error."
 
-showPrompt :: Problem -> IO ()
-showPrompt p =
-  do putStrLn $ "Error: " ++ showProblem p
-     putStr "Type an expression: "
-     hFlush stdout
+showPrompt :: Problem -> IO Expr'
+showPrompt p = runInputT defaultSettings $
+  do outputStrLn $ ":: Error: " ++ showProblem p
+     getInputLine ":: Use value: " >>=
+       \case Nothing -> return (EVal VNil)
+             Just s  -> return (read s)
