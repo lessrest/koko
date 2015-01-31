@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Koko where
 
 import Koko.Types
@@ -6,9 +7,45 @@ import Bound (instantiate)
 import Control.Applicative
 import Control.Monad.Trans.Either (runEitherT, left)
 import Control.Monad.Writer (tell, runWriter)
+import Control.Monad.Free
+
+prepare :: Expr' -> ExecM Expr'
+prepare =
+  \case
+    EVal VNil -> xNil
+    EVar (Left v) -> xIdx v
+    EVar (Right v) -> xName v
+    EVal (VSym s) -> xSym s
+    EVal (VAbs e) -> xAbs e
+    EVal (VFun v) -> xName v
+    EVal (VArr es) -> xArr es
+    EApp e xs -> xApp e xs
+
+execute :: ExecM Expr' -> Evaluator Expr'
+execute = iterM run
+  where
+    run :: Exec (Evaluator Expr') -> Evaluator Expr'
+    run = \case
+      XHalt p -> left (show p)
+      XNil f -> f (EVal (VNil))
+      XName n f -> f (EVal (VFun n))
+      XIdx i _ -> left (show (NonexistentImplicitArgument i))
+      XSym s f -> f (EVal (VSym s))
+      XAbs x f -> f (EVal (VAbs x))
+      XArr es f -> do
+        es' <- mapM (execute . prepare) es
+        f (EVal (VArr es'))
+      XApp e es f -> do
+        e' <- execute (prepare e)
+        es' <- mapM (execute . prepare) es
+        x <- apply e' es'
+        f x
 
 evaluate :: Expr' -> (Either String Expr', [String])
-evaluate e = runWriter (runEitherT (evaluate' e))
+evaluate e = runWriter (runEitherT (evaluate'' e))
+
+evaluate'' :: Expr' -> Evaluator Expr'
+evaluate'' = execute . prepare
 
 evaluate' :: Expr' -> Evaluator Expr'
 evaluate' (EVal (VSym s)) = pure (EVal (VSym s))
