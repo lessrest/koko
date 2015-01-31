@@ -3,14 +3,16 @@ import Koko
 
 main :: IO ()
 main = hspec $ do
+  let (->>) = shouldParseTo
+      (=>>) = shouldEvaluateTo
+      (=*>) = shouldOutput
+  
   describe "parse failures" $ do
     expectParseFailure "%0"
     expectParseFailure "a b"
     expectParseFailure `mapM_` (map (:"") "[]{}")
 
   describe "parse successes" $ do
-    let (->>) = shouldParseTo
-
     "@"         ->> EVar "@"
     "@foo"      ->> EVar "@foo"
     "{ }"       ->> EAbs ENil
@@ -26,18 +28,14 @@ main = hspec $ do
         EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
 
   describe "evaluation" $ do
-    let (->>) = shouldEvaluateTo
-
-    "a" ->> VSym "a"
-    "[ { a } ]" ->> VSym "a"
+    "a"         =>> VSym "a"
+    "[ { a } ]" =>> VSym "a"
 
   describe "output" $ do
-    let (->>) = shouldOutput
-
-    "a" ->> []
-    "[ @print a ]" ->> ["a"]
-    "[ @print Hello, world! ]" ->> ["Hello,", "world!"]
-    "[ [ { @print } ] yes ]" ->> ["yes"]
+    "a"                        =*> []
+    "[ @print a ]"             =*> ["a"]
+    "[ @print Hello, world! ]" =*> ["Hello,", "world!"]
+    "[ [ { @print } ] yes ]"   =*> ["yes"]
 
 ------------------------------------------------------------------------
 
