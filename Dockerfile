@@ -1,5 +1,4 @@
-FROM haskell:7.8
-RUN cabal update && cabal install hspec
+FROM lessrest/docker-haskell:latest
 WORKDIR /usr/src/koko
 COPY koko.cabal /usr/src/koko/koko.cabal
 RUN cabal install --enable-tests --only-dependencies
