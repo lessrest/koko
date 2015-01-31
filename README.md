@@ -1,6 +1,6 @@
 # Koko, aka `::'
 
 ```
-$ :: [ @print Hello, world! ]
+$ :: [ @print-line Hello, world! ]
 Hello, world!
 ```

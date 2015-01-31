@@ -79,9 +79,9 @@ evaluate' (EVar v) = pure (VFun v)
 evaluate' _ = left "Evaluation error"
 
 functions :: [(String, [Value] -> Evaluator Value)]
-functions = [("@print", doPrint)]
+functions = [("@print-line", doPrint)]
   where
-    doPrint v = tell (map output v) >> pure VNil
+    doPrint v = tell [unwords (map output v) ++ "\n"] >> pure VNil
 
 output :: Value -> String
 output (VSym s) = s

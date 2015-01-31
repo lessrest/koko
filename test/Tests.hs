@@ -32,10 +32,10 @@ main = hspec $ do
     "[ { a } ]" =>> VSym "a"
 
   describe "output" $ do
-    "a"                        =*> []
-    "[ @print a ]"             =*> ["a"]
-    "[ @print Hello, world! ]" =*> ["Hello,", "world!"]
-    "[ [ { @print } ] yes ]"   =*> ["yes"]
+    "a"                             =*> []
+    "[ @print-line a ]"             =*> ["a\n"]
+    "[ @print-line Hello, world! ]" =*> ["Hello, world!\n"]
+    "[ [ { @print-line } ] yes ]"   =*> ["yes\n"]
 
 ------------------------------------------------------------------------
 
