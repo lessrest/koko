@@ -51,6 +51,15 @@ main = hspec $ do
     "[ @array ]"       =>> EVal (VArr [])
     "[ @array a b c ]" =>> EVal (VArr (map (EVal . VSym) (words "a b c")))
 
+  describe "named parameters" $ do
+    "{ a : @a }"   ->> absP ["a"] (EVar (Right "@a"))
+    "{ a b : @a }" ->> absP ["a", "b"] (EVar (Right "@a"))
+
+    "[ { a b : @b } x y ]"                =>> EVal (VSym "y")
+    "[ { a b : [ @b x ] } y { b : @b } ]" =>> EVal (VSym "x")
+    
+    "[ [ { x : { y : [ @y @x ] } } foo ] @print-line ]" =*> ["foo\n"]
+
 ------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr' -> Spec

@@ -13,9 +13,11 @@ evaluate e = runWriter (runEitherT (evaluate' e))
 evaluate' :: Expr' -> Evaluator Expr'
 evaluate' (EVal (VSym s)) = pure (EVal (VSym s))
 evaluate' (EVal (VAbs e)) = pure (EVal (VAbs e))
+evaluate' (EVal (VFun s)) = pure (EVal (VFun s))
 evaluate' (EApp e xs) = flip apply xs =<< evaluate' e
 evaluate' (EVar (Right v)) = pure (EVal (VFun v))
-evaluate' _ = left "Evaluation error"
+evaluate' (EVar (Left v)) = left $ "Unknown variable " ++ show v
+evaluate' e = left $ "Evaluation error: " ++ show e
 
 functions :: [(String, [Expr'] -> Evaluator Expr')]
 functions = [("@print-line", doPrint),
@@ -35,7 +37,7 @@ apply (EVal (VAbs e)) es = do
   let f i = vs !! (i - 1)
   evaluate' (instantiate f e)
 apply (EVal (VFun s)) es = do
-  f <- maybe (left "No such function") pure (lookup s functions)
+  f <- maybe (left $ "No such function " ++ s) pure (lookup s functions)
   vs <- mapM evaluate' es
   f vs
 apply _ _ = left "Application error"

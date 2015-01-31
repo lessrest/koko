@@ -26,14 +26,17 @@ skip :: Parser a -> Parser ()
 skip = (>> return ())
 
 expr :: Parsec [Token'] () Expr'
-expr = choice [simple, application, abstraction]
+expr = choice [simple, application, try explicit, implicit]
   where
     application = try (word "[" *> (EApp <$> expr <*> many expr) <* word "]")
-    abstraction = absWithImplicitParameters <$> (word "{" >> try body)
+    explicit    = absP <$> (word "{" *> many symbolToken <* word ":")
+                       <*> body
+    implicit    = absN <$> (word "{" >> body)
     body        = (word "}" *> pure (EVal VNil)) <|> (expr <* word "}")
     simple      = choice [variable, symbol, index]
     variable    = (EVar . Right) <$> tokenThat ((== '@') . head)
-    symbol      = EVal . VSym <$> tokenThat (not . (`elem` "%@[]{}") . head)
+    symbol      = EVal . VSym <$> symbolToken
+    symbolToken = tokenThat (not . (`elem` "%@[]{}:") . head)
     index       = (tokenThat (== "%") *> pure (EVar (Left 1))) <|> numberedIndex
 
 numberedIndex :: Parser Expr'

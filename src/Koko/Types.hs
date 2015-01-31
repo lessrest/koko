@@ -11,6 +11,7 @@ import Control.Monad.Writer (Writer)
 import Control.Monad (ap)
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
+import Data.List (elemIndex)
 
 import Text.Parsec.Pos (SourcePos)
 import Text.Parsec.Prim (Parsec)
@@ -63,3 +64,10 @@ absWithImplicitParameters = EVal . VAbs . abstract (either Just (const Nothing))
 
 absN :: Expr' -> Expr'
 absN = absWithImplicitParameters
+
+absWithExplicitParameters :: Eq a => [a] -> Expr (Either Int a) -> Expr (Either Int a)
+absWithExplicitParameters ps = EVal . VAbs . abstract (either (const Nothing) f)
+  where f x = (+ 1) <$> elemIndex x ps
+
+absP :: [String] -> Expr' -> Expr'
+absP ps = absWithExplicitParameters (map ('@':) ps)
