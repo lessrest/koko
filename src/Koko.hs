@@ -4,6 +4,7 @@ import Control.Applicative
   ((<$>), (<*>), (<*), (*>),
    pure, many)
 import Control.Monad (when)
+import Data.Monoid
 
 import Text.Parsec.Combinator (choice, eof)
 import Text.Parsec.Error (ParseError)
@@ -16,6 +17,7 @@ type Token = String
 type Token' = (SourcePos, Token)
 type Stream = [Token']
 type Parser a = Parsec Stream () a
+type Output = [String]
 
 tokenThat :: (Token -> Bool) -> Parser Token
 tokenThat p = token (show . snd) fst p'
@@ -41,7 +43,14 @@ data Expr = EVar String
 
 data Value = VSym String
            | VAbs Expr
+           | VNil
              deriving (Eq, Show)
+
+type State = (Value, Output)
+
+instance Monoid Value where
+  mempty = VNil
+  mappend _ b = b
 
 expr :: Parsec [Token'] () Expr
 expr = choice [simple, application, abstraction]
@@ -61,12 +70,15 @@ numberedIndex = do
   when (x <= 0) (fail "Variable index must be positive")
   return (EIdx x)
 
-evaluate :: Expr -> Either String Value
-evaluate (ESym s) = pure (VSym s)
-evaluate (EAbs e) = pure (VAbs e)
+value :: Value -> Either String State
+value v = pure (v, [])
+
+evaluate :: Expr -> Either String State
+evaluate (ESym s) = value (VSym s)
+evaluate (EAbs e) = value (VAbs e)
 evaluate (EApp e []) = apply =<< evaluate e
 evaluate _ = Left "Evaluation error"
 
-apply :: Value -> Either String Value
-apply (VAbs e) = evaluate e
+apply :: State -> Either String State
+apply (VAbs e, _) = evaluate e
 apply _ = Left "Application error"

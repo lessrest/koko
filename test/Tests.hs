@@ -33,6 +33,11 @@ main = hspec $ do
     "a" ->> VSym "a"
     "[ { a } ]" ->> VSym "a"
 
+  describe "output" $ do
+    let (->>) = shouldOutput
+
+    "a" ->> []
+
 ------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr -> Spec
@@ -57,4 +62,14 @@ shouldEvaluateTo s v =
       Right e ->
         case evaluate e of
           Left err -> expectationFailure (show err)
-          Right v' -> v' `shouldBe` v
+          Right (v', _) -> v' `shouldBe` v
+
+shouldOutput :: String -> [String] -> Spec
+shouldOutput s xs =
+  it ("should give output for `" ++ s ++ "'") $
+    case parse (words s) of
+      Left err -> expectationFailure (show err)
+      Right e ->
+        case evaluate e of
+          Left err -> expectationFailure (show err)
+          Right (_, xs') -> xs' `shouldBe` xs
