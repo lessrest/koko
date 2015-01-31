@@ -20,6 +20,7 @@ main = hspec $ do
     "{ a }"     ->> EAbs (ESym "a")
     "{ { a } }" ->> EAbs (EAbs (ESym "a"))
     "[ { a } ]" ->> EApp (EAbs (ESym "a")) []
+    "[ a b c ]" ->> EApp (ESym "a") [ESym "b", ESym "c"]
     "%"         ->> EIdx 1   
     "%1"        ->> EIdx 1
     "%25"       ->> EIdx 25
@@ -31,6 +32,13 @@ main = hspec $ do
   describe "evaluation" $ do
     "a"         =>> VSym "a"
     "[ { a } ]" =>> VSym "a"
+
+  describe "application with arguments" $ do
+    "[ { % } a ]" =>> VSym "a"
+    "[ { % } a b ]" =>> VSym "a"
+    "[ { %1 } a b ]" =>> VSym "a"
+    "[ { %2 } a b ]" =>> VSym "b"
+    "[ [ { % } { % } ] a ]" =>> VSym "a"
 
   describe "output" $ do
     "a"                             =*> []

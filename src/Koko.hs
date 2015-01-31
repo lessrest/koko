@@ -4,8 +4,8 @@ import Control.Applicative
   ((<$>), (<*>), (<*), (*>),
    pure, many)
   
-import Control.Monad (when)
 import Control.Monad.Writer (Writer, tell, runWriter)
+import Control.Monad.Reader
 import Control.Monad.Trans.Either
 
 import Text.Parsec.Combinator (choice, eof)
@@ -20,7 +20,7 @@ type Token' = (SourcePos, Token)
 type Stream = [Token']
 type Parser a = Parsec Stream () a
 type Output = [String]
-type Evaluator a = EitherT String (Writer [String]) a
+type Evaluator a = ReaderT [Value] (EitherT String (Writer [String])) a
 
 tokenThat :: (Token -> Bool) -> Parser Token
 tokenThat p = token (show . snd) fst p'
@@ -69,14 +69,15 @@ numberedIndex = do
   return (EIdx x)
 
 evaluate :: Expr -> (Either String Value, [String])
-evaluate e = runWriter (runEitherT (evaluate' e))
+evaluate e = runWriter (runEitherT (runReaderT (evaluate' e) []))
 
 evaluate' :: Expr -> Evaluator Value
 evaluate' (ESym s) = pure (VSym s)
 evaluate' (EAbs e) = pure (VAbs e)
 evaluate' (EApp e xs) = flip apply xs =<< evaluate' e
 evaluate' (EVar v) = pure (VFun v)
-evaluate' _ = left "Evaluation error"
+evaluate' (EIdx i) = (!! (i - 1)) <$> ask
+evaluate' _ = lift (left "Evaluation error")
 
 functions :: [(String, [Value] -> Evaluator Value)]
 functions = [("@print-line", doPrint)]
@@ -88,9 +89,11 @@ output (VSym s) = s
 output _ = "<value>"
 
 apply :: Value -> [Expr] -> Evaluator Value
-apply (VAbs e) [] = evaluate' e
-apply (VFun s) vs = do
-  f <- maybe (left "No such function") right (lookup s functions)
-  vs' <- mapM evaluate' vs
-  f vs'
-apply _ _ = left "Application error"
+apply (VAbs e) es = do
+  vs <- mapM evaluate' es
+  local (const vs) (evaluate' e)
+apply (VFun s) es = do
+  f <- maybe (lift (left "No such function")) pure (lookup s functions)
+  vs <- mapM evaluate' es
+  f vs
+apply _ _ = lift (left "Application error")
