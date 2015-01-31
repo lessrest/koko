@@ -18,7 +18,6 @@ import Control.Monad.Prompt
 
 import Prelude.Extras (Eq1, Ord1, Show1, Read1)
 import Control.Monad.Trans.Either (EitherT)
-import Control.Monad.Writer (Writer)
 import Control.Monad (ap)
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
@@ -37,9 +36,6 @@ data Restart a where
 
 type Evaluator m a = EitherT Problem (PromptT Restart m) a
 type PromptResult m = m (Either Problem Expr')
-
-type Base = Writer [String]
-type Evaluator' = Evaluator Base Expr'
 
 data Expr v = EVar v
             | EApp (Expr v) [Expr v]
@@ -83,6 +79,18 @@ data Problem = NonexistentImplicitArgument Int
              | Nonapplicable Value'
              | UnknownError
   deriving (Eq, Ord, Show)
+
+data Action a where
+  DoPrint :: String -> a -> Action a
+  DoPrompt :: Problem -> (Expr' -> a) -> Action a
+  deriving Functor
+
+$(makeFree ''Action)
+
+type ActionM = Free Action
+type Base = ActionM
+
+type Evaluator' = Evaluator Base Expr'
 
 data Exec a where
   XHalt :: Problem -> Exec a

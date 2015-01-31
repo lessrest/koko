@@ -9,7 +9,7 @@ import Control.Monad.Free
 import Control.Monad.Trans
 import Control.Monad.Prompt
 import Control.Monad.Trans.Either (runEitherT, left)
-import Control.Monad.Writer (tell, runWriter)
+import Control.Monad.Writer (Writer, tell, runWriter)
 
 prepare :: Expr' -> ExecM Expr'
 prepare =
@@ -47,28 +47,49 @@ type Result = (Either Problem Expr', [String])
 evaluate :: Expr' -> Result
 evaluate = evaluateWithRestart (\p _ -> return (Left p))
 
+runAsWriter :: Free Action (Either Problem Expr') -> Result
+runAsWriter = runWriter . iterM run
+  where
+    run :: Action (Writer [String] (Either Problem Expr'))
+        -> Writer [String] (Either Problem Expr')
+    run (DoPrint s m) = tell [s] >> m
+    run (DoPrompt _ f) = f (EVal VNil)
+
+runAsIO :: Free Action (Either Problem Expr') -> IO (Either Problem Expr')
+runAsIO = iterM run
+  where
+    run :: Action (IO (Either Problem Expr')) -> IO (Either Problem Expr')
+    run (DoPrint s m) = putStr s >> m
+    run (DoPrompt p f) = do print (show p)
+                            e <- readLn
+                            f e
+
 evaluateWithRestart
   :: (Problem -> (Expr' -> PromptResult Base) -> PromptResult Base)
   -> Expr'
   -> Result
 evaluateWithRestart f =
-  runWriter .
+  runAsWriter .
   runPromptT return (\(UncaughtProblem p) k -> f p k) (>>=) .
   runEitherT .
   evaluate'
 
--- evaluateWithRestartM
---   :: (Problem -> (Expr' -> PromptResult) -> m Prompt
+evaluateIO :: Expr' -> IO (Either Problem Expr')
+evaluateIO =
+  runAsIO .
+  runPromptT return (\(UncaughtProblem p) k -> doPrompt p >>= k) (>>=) .
+  runEitherT .
+  evaluate'
         
 evaluate' :: Expr' -> Evaluator'
 evaluate' = execute . prepare
 
 functions :: [(String, [Expr'] -> Evaluator')]
-functions = [("@print-line", doPrint),
+functions = [("@print-line", printLine),
              ("@array", doArray)]
   where
-    doPrint v = lift . lift $ do
-      tell [unwords (map output v) ++ "\n"]
+    printLine v = lift . lift $ do
+      doPrint (unwords (map output v) ++ "\n")
       pure (EVal VNil)
     doArray v = return (EVal (VArr v))
 
