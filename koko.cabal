@@ -14,7 +14,8 @@ library
   hs-source-dirs: src
   exposed-modules:
     Koko,
-    Koko.Types
+    Koko.Types,
+    Koko.Parser
   build-depends:
     base == 4.*,
     parsec == 3.1.*,

@@ -1,4 +1,5 @@
-import Koko (parse, evaluate)
+import Koko (evaluate)
+import Koko.Parser (parse)
 import System.Environment
 import System.Exit
 

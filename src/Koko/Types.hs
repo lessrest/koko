@@ -2,7 +2,7 @@
 
 module Koko.Types where
 
-import Bound (Scope, (>>>=))
+import Bound (Scope, abstract, (>>>=))
 
 import Control.Applicative
 import Prelude.Extras (Eq1, Ord1, Show1, Read1)
@@ -57,3 +57,9 @@ instance Monad Expr where
      EVal (VFun s) -> EVal (VFun s)
      EVal VNil -> EVal VNil
      EVal (VArr es) -> EVal (VArr (map (>>= f) es))
+
+absWithImplicitParameters :: Eq a => Expr (Either Int a) -> Expr (Either Int a)
+absWithImplicitParameters = EVal . VAbs . abstract (either Just (const Nothing))
+
+absN :: Expr' -> Expr'
+absN = absWithImplicitParameters

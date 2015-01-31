@@ -1,8 +1,10 @@
 module Main where
 
 import Test.Hspec
+
 import Koko
 import Koko.Types
+import Koko.Parser
 
 main :: IO ()
 main = hspec $ do

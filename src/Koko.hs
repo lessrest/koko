@@ -2,57 +2,10 @@ module Koko where
 
 import Koko.Types
 
-import Bound (abstract, instantiate)
+import Bound (instantiate)
 import Control.Applicative
-import Control.Monad (when)
 import Control.Monad.Trans.Either (runEitherT, left)
 import Control.Monad.Writer (tell, runWriter)
-
-import Text.Parsec.Combinator (choice, eof)
-import Text.Parsec.Error (ParseError)
-import Text.Parsec.Pos (newPos)
-import Text.Parsec.Prim (Parsec, token, try)
-
-import qualified Text.Parsec.Prim as P
-
-tokenThat :: (Token -> Bool) -> Parser Token
-tokenThat p = token (show . snd) fst p'
-  where p' (_, t) = if p t then Just t else Nothing
-
-parse :: [Token] -> Either ParseError Expr'
-parse xs = P.parse (expr <* eof) "" xs'
-  where xs' = [(newPos "" 1 i, x) | (x, i) <- zip xs [1..]]
-
-word :: Token -> Parser ()
-word c = skip (tokenThat (== c))
-
-skip :: Parser a -> Parser ()
-skip = (>> return ())
-
-
-absWithImplicitParameters :: Eq a => Expr (Either Int a) -> Expr (Either Int a)
-absWithImplicitParameters = EVal . VAbs . abstract (either Just (const Nothing))
-
-absN :: Expr' -> Expr'
-absN = absWithImplicitParameters
-
-expr :: Parsec [Token'] () Expr'
-expr = choice [simple, application, abstraction]
-  where
-    application = try (word "[" *> (EApp <$> expr <*> many expr) <* word "]")
-    abstraction = absWithImplicitParameters <$> (word "{" >> try body)
-    body        = (word "}" *> pure (EVal VNil)) <|> (expr <* word "}")
-    simple      = choice [variable, symbol, index]
-    variable    = (EVar . Right) <$> tokenThat ((== '@') . head)
-    symbol      = EVal . VSym <$> tokenThat (not . (`elem` "%@[]{}") . head)
-    index       = (tokenThat (== "%") *> pure (EVar (Left 1))) <|> numberedIndex
-
-numberedIndex :: Parser Expr'
-numberedIndex = do
-  (_:s) <- tokenThat ((== '%') . head)
-  let [(x, [])] = reads s
-  when (x <= 0) (fail "Variable index must be positive")
-  return (EVar (Left x))
 
 evaluate :: Expr' -> (Either String Expr', [String])
 evaluate e = runWriter (runEitherT (evaluate' e))
