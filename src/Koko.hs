@@ -26,20 +26,17 @@ execute = iterM run
   where
     run :: Exec (Evaluator Expr') -> Evaluator Expr'
     run = \case
-      XHalt p -> left (show p)
-      XNil f -> f (EVal (VNil))
+      XHalt p   -> left (show p)
+      XIdx i _  -> left (show (NonexistentImplicitArgument i))
+      XNil f    -> f (EVal (VNil))
       XName n f -> f (EVal (VFun n))
-      XIdx i _ -> left (show (NonexistentImplicitArgument i))
-      XSym s f -> f (EVal (VSym s))
-      XAbs x f -> f (EVal (VAbs x))
-      XArr es f -> do
-        es' <- mapM (execute . prepare) es
-        f (EVal (VArr es'))
-      XApp e es f -> do
-        e' <- execute (prepare e)
-        es' <- mapM (execute . prepare) es
-        x <- apply e' es'
-        f x
+      XSym s f  -> f (EVal (VSym s))
+      XAbs x f  -> f (EVal (VAbs x))
+      XArr es f -> f =<< EVal . VArr <$> mapM (execute . prepare) es
+      XApp e es f ->
+        do e' <- evaluate' e
+           es' <- mapM evaluate' es
+           f =<< apply e' es'
 
 evaluate :: Expr' -> (Either String Expr', [String])
 evaluate e = runWriter (runEitherT (evaluate' e))
