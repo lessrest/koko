@@ -16,31 +16,27 @@ main = hspec $ do
     expectParseFailure "[ ]"
 
   describe "parse successes" $ do
-    "@"         ->> EVar "@"
-    "@foo"      ->> EVar "@foo"
-    "{ }"       ->> EAbs ENil
-    "{ a }"     ->> EAbs (ESym "a")
-    "{ { a } }" ->> EAbs (EAbs (ESym "a"))
-    "[ { a } ]" ->> EApp (EAbs (ESym "a")) []
-    "[ a b c ]" ->> EApp (ESym "a") [ESym "b", ESym "c"]
-    "%"         ->> EIdx 1   
-    "%1"        ->> EIdx 1
-    "%25"       ->> EIdx 25
-
-    describe "larger examples" $ do
-      "[ @print Hello, world! ]" ->>
-        EApp (EVar "@print") [ESym "Hello,", ESym "world!"]
+    "@"         ->> EVar (Right "@")
+    "@foo"      ->> EVar (Right "@foo")
+    "{ }"       ->> absN (EVal VNil)
+    "{ a }"     ->> absN (EVal (VSym "a"))
+    "{ { a } }" ->> absN (absN (EVal (VSym "a")))
+    "[ { a } ]" ->> EApp (absN (EVal (VSym "a"))) []
+    "[ a b c ]" ->> EApp (EVal (VSym "a")) [EVal (VSym "b"), EVal (VSym "c")]
+    "%"         ->> EVar (Left 1)
+    "%1"        ->> EVar (Left 1)
+    "%25"       ->> EVar (Left 25)
 
   describe "evaluation" $ do
-    "a"         =>> VSym "a"
-    "[ { a } ]" =>> VSym "a"
+    "a"         =>> EVal (VSym "a")
+    "[ { a } ]" =>> EVal (VSym "a")
 
   describe "application with arguments" $ do
-    "[ { % } a ]"           =>> VSym "a"
-    "[ { % } a b ]"         =>> VSym "a"
-    "[ { %1 } a b ]"        =>> VSym "a"
-    "[ { %2 } a b ]"        =>> VSym "b"
-    "[ [ { % } { % } ] a ]" =>> VSym "a"
+    "[ { % } a ]"           =>> EVal (VSym "a")
+    "[ { % } a b ]"         =>> EVal (VSym "a")
+    "[ { %1 } a b ]"        =>> EVal (VSym "a")
+    "[ { %2 } a b ]"        =>> EVal (VSym "b")
+    "[ [ { % } { % } ] a ]" =>> EVal (VSym "a")
 
   describe "output" $ do
     "a"                             =*> []
@@ -49,12 +45,12 @@ main = hspec $ do
     "[ @print-line Hello, world! ]" =*> ["Hello, world!\n"]
 
   describe "arrays" $ do
-    "[ @array ]"       =>> VArr []
-    "[ @array a b c ]" =>> VArr (map VSym (words "a b c"))
+    "[ @array ]"       =>> EVal (VArr [])
+    "[ @array a b c ]" =>> EVal (VArr (map (EVal . VSym) (words "a b c")))
 
 ------------------------------------------------------------------------
 
-shouldParseTo :: String -> Expr -> Spec
+shouldParseTo :: String -> Expr' -> Spec
 shouldParseTo s e =
   it ("should parse `" ++ s ++ "'") $
     case parse (words s) of
@@ -68,7 +64,7 @@ expectParseFailure s =
       Left _ -> return ()
       Right x -> expectationFailure ("Parsed to (" ++ show x ++ ")")
 
-shouldEvaluateTo :: String -> Value -> Spec
+shouldEvaluateTo :: String -> Expr' -> Spec
 shouldEvaluateTo s v =
   it ("should evaluate `" ++ s ++ "'") $
     case parse (words s) of
