@@ -129,6 +129,6 @@ shouldPromptAndBe s def expected =
     case parse (words s) of
       Left err -> expectationFailure (show err)
       Right e ->
-        case evaluateWithRestart (\(UncaughtProblem _) f -> f def) e of
+        case evaluateWithRestart (\_ k -> k def) e of
           (Right e', _) -> e' `shouldBe` expected
           (Left err, _) -> expectationFailure (show err)

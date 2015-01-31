@@ -18,7 +18,7 @@ import Control.Monad.Prompt
 
 import Prelude.Extras (Eq1, Ord1, Show1, Read1)
 import Control.Monad.Trans.Either (EitherT)
-import Control.Monad.Writer (WriterT)
+import Control.Monad.Writer (Writer)
 import Control.Monad (ap)
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
@@ -35,7 +35,9 @@ type Parser a = Parsec Stream () a
 data Restart a where
   UncaughtProblem :: Problem -> Restart Expr'
 
-type Evaluator a = EitherT Problem (WriterT [String] (Prompt Restart)) a
+type Evaluator a = EitherT Problem (PromptT Restart (Writer [String])) a
+
+type PromptResult = Writer [String] (Either Problem Expr')
 
 data Expr v = EVar v
             | EApp (Expr v) [Expr v]

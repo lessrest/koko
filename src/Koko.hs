@@ -9,7 +9,7 @@ import Control.Monad.Free
 import Control.Monad.Trans
 import Control.Monad.Prompt
 import Control.Monad.Trans.Either (runEitherT, left)
-import Control.Monad.Writer (tell, runWriterT)
+import Control.Monad.Writer (tell, runWriter)
 
 prepare :: Expr' -> ExecM Expr'
 prepare =
@@ -42,18 +42,21 @@ execute = iterM run
            es' <- mapM evaluate' es
            f =<< apply e' es'
 
-evaluate :: Expr' -> (Either Problem Expr', [String])
-evaluate e = runPromptC id (\(UncaughtProblem p) _ -> (Left p, []))
-               (runWriterT (runEitherT (evaluate' e)))
-
 type Result = (Either Problem Expr', [String])
 
-evaluateWithRestart :: (forall a. Restart a -> (a -> Result) -> Result)
-                    -> Expr'
-                    -> Result
-evaluateWithRestart f =
-  runPromptC id f . runWriterT . runEitherT . evaluate'
+evaluate :: Expr' -> Result
+evaluate = evaluateWithRestart (\p _ -> return (Left p))
 
+evaluateWithRestart
+  :: (Problem -> (Expr' -> PromptResult) -> PromptResult)
+  -> Expr'
+  -> Result
+evaluateWithRestart f =
+  runWriter .
+  runPromptT return (\(UncaughtProblem p) k -> f p k) (>>=) .
+  runEitherT .
+  evaluate'
+        
 evaluate' :: Expr' -> Evaluator Expr'
 evaluate' = execute . prepare
 
@@ -61,7 +64,9 @@ functions :: [(String, [Expr'] -> Evaluator Expr')]
 functions = [("@print-line", doPrint),
              ("@array", doArray)]
   where
-    doPrint v = tell [unwords (map output v) ++ "\n"] >> pure (EVal VNil)
+    doPrint v = lift . lift $ do
+      tell [unwords (map output v) ++ "\n"]
+      pure (EVal VNil)
     doArray v = return (EVal (VArr v))
 
 output :: Expr' -> String
@@ -81,4 +86,4 @@ apply (EVal v) _ = problem (Nonapplicable v)
 apply _ _ = problem UnknownError
 
 problem :: Problem -> Evaluator Expr'
-problem = lift . lift . prompt . UncaughtProblem
+problem = lift . prompt . UncaughtProblem
