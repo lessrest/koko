@@ -42,19 +42,10 @@ execute = iterM run
         f x
 
 evaluate :: Expr' -> (Either String Expr', [String])
-evaluate e = runWriter (runEitherT (evaluate'' e))
-
-evaluate'' :: Expr' -> Evaluator Expr'
-evaluate'' = execute . prepare
+evaluate e = runWriter (runEitherT (evaluate' e))
 
 evaluate' :: Expr' -> Evaluator Expr'
-evaluate' (EVal (VSym s)) = pure (EVal (VSym s))
-evaluate' (EVal (VAbs e)) = pure (EVal (VAbs e))
-evaluate' (EVal (VFun s)) = pure (EVal (VFun s))
-evaluate' (EApp e xs) = flip apply xs =<< evaluate' e
-evaluate' (EVar (Right v)) = pure (EVal (VFun v))
-evaluate' (EVar (Left v)) = left $ "Unknown variable " ++ show v
-evaluate' e = left $ "Evaluation error: " ++ show e
+evaluate' = execute . prepare
 
 functions :: [(String, [Expr'] -> Evaluator Expr')]
 functions = [("@print-line", doPrint),
@@ -70,11 +61,9 @@ output _ = "<unevaluated>"
 
 apply :: Expr' -> [Expr'] -> Evaluator Expr'
 apply (EVal (VAbs e)) es = do
-  vs <- mapM evaluate' es
-  let f i = vs !! (i - 1)
+  let f i = es !! (i - 1)
   evaluate' (instantiate f e)
 apply (EVal (VFun s)) es = do
   f <- maybe (left $ "No such function " ++ s) pure (lookup s functions)
-  vs <- mapM evaluate' es
-  f vs
+  f es
 apply _ _ = left "Application error"
