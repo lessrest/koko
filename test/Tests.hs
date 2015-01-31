@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Main where
 
 import Test.Hspec
@@ -69,6 +70,11 @@ main = hspec $ do
     "%1" `hasProblem` NonexistentImplicitArgument 1
     "[ x ]" `hasProblem` Nonapplicable (VSym "x")
 
+  describe "prompts" $ do
+    shouldPromptAndBe "@x" (EVal VNil) (EVal VNil)
+    shouldPromptAndBe "[ @array @x y ]" (EVal (VNil))
+      (EVal (VArr [EVal (VNil), EVal (VSym "y")]))
+
 ------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr' -> Spec
@@ -115,3 +121,14 @@ hasProblem s p =
         case evaluate e of
           (Right x, _) -> expectationFailure ("evaluated to " ++ show x)
           (Left p', _) -> p' `shouldBe` p
+
+shouldPromptAndBe:: String -> Expr' -> Expr' -> Spec
+shouldPromptAndBe s def expected =
+  it ("retrying `" ++ s ++ "' w/ `" ++ show def ++ "' should give `"
+      ++ show expected ++ "'") $
+    case parse (words s) of
+      Left err -> expectationFailure (show err)
+      Right e ->
+        case evaluateWithRestart (\(UncaughtProblem _) f -> f def) e of
+          (Right e', _) -> e' `shouldBe` expected
+          (Left err, _) -> expectationFailure (show err)

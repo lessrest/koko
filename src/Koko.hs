@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, GADTs #-}
+{-# LANGUAGE LambdaCase, GADTs, RankNTypes #-}
 module Koko where
 
 import Koko.Types
@@ -6,6 +6,7 @@ import Koko.Types
 import Bound (instantiate)
 import Control.Applicative
 import Control.Monad.Free
+import Control.Monad.Trans
 import Control.Monad.Prompt
 import Control.Monad.Trans.Either (runEitherT, left)
 import Control.Monad.Writer (tell, runWriterT)
@@ -28,9 +29,9 @@ execute = iterM run
     run :: Exec (Evaluator Expr') -> Evaluator Expr'
     run = \case
       XHalt p   -> left p
-      XIdx i _  -> left (NonexistentImplicitArgument i)
+      XIdx i f  -> f =<< problem (NonexistentImplicitArgument i)
       XName n f -> case lookup n functions of
-                     Nothing -> left (NonexistentFreeVariable n)
+                     Nothing -> problem (NonexistentFreeVariable n)
                      Just _  -> f (EVal (VFun n))
       XNil f    -> f (EVal (VNil))
       XSym s f  -> f (EVal (VSym s))
@@ -44,6 +45,14 @@ execute = iterM run
 evaluate :: Expr' -> (Either Problem Expr', [String])
 evaluate e = runPromptC id (\(UncaughtProblem p) _ -> (Left p, []))
                (runWriterT (runEitherT (evaluate' e)))
+
+type Result = (Either Problem Expr', [String])
+
+evaluateWithRestart :: (forall a. Restart a -> (a -> Result) -> Result)
+                    -> Expr'
+                    -> Result
+evaluateWithRestart f =
+  runPromptC id f . runWriterT . runEitherT . evaluate'
 
 evaluate' :: Expr' -> Evaluator Expr'
 evaluate' = execute . prepare
@@ -65,6 +74,11 @@ apply (EVal (VAbs e)) es = do
   let f i = es !! (i - 1)
   evaluate' (instantiate f e)
 apply (EVal (VFun s)) es = do
-  f <- maybe (left $ NonexistentFreeVariable s) pure (lookup s functions)
-  f es
-apply (EVal v) _ = left (Nonapplicable v)
+  case lookup s functions of
+    Nothing -> problem (NonexistentFreeVariable s)
+    Just f -> f es
+apply (EVal v) _ = problem (Nonapplicable v)
+apply _ _ = problem UnknownError
+
+problem :: Problem -> Evaluator Expr'
+problem = lift . lift . prompt . UncaughtProblem
