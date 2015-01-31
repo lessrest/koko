@@ -32,8 +32,11 @@ execute = iterM run
       XHalt p   -> left p
       XIdx i f  -> f =<< problem (NonexistentImplicitArgument i)
       XName n f -> case lookup n functions of
-                     Nothing -> problem (NonexistentFreeVariable n)
                      Just _  -> f (EVal (VFun n))
+                     Nothing ->
+                       case lookup n globals of
+                         Just v  -> f (EVal v)
+                         Nothing -> problem (NonexistentFreeVariable n)
       XNil f    -> f (EVal (VNil))
       XSym s f  -> f (EVal (VSym s))
       XAbs x f  -> f (EVal (VAbs x))
@@ -92,10 +95,8 @@ functions = [("@print-line", printLine),
       pure (EVal VNil)
     doArray v = return (EVal (VArr v))
 
-output :: Expr' -> String
-output (EVal (VSym s)) = s
-output (EVal _) = "<value>"
-output _ = "<unevaluated>"
+globals :: [(String, Value')]
+globals = [("@nil", VNil)]
 
 apply :: Expr' -> [Expr'] -> Evaluator'
 apply (EVal (VAbs e)) es = do

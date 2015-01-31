@@ -34,6 +34,7 @@ main = hspec $ do
   describe "evaluation" $ do
     "a"         =>> EVal (VSym "a")
     "[ { a } ]" =>> EVal (VSym "a")
+    "@nil"      =>> EVal VNil
 
   describe "application with arguments" $ do
     "[ { % } a ]"           =>> EVal (VSym "a")
