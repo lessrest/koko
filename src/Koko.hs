@@ -53,14 +53,14 @@ runAsWriter = runWriter . iterM run
   where
     run :: Action (Writer [String] (Either Problem Expr'))
         -> Writer [String] (Either Problem Expr')
-    run (DoPrint s m) = tell [s] >> m
+    run (DoPrint es m) = tell [Friendly.showExprs es ++ "\n"] >> m
     run (DoPrompt _ f) = f (EVal VNil)
 
 runAsIO :: Free Action (Either Problem Expr') -> IO (Either Problem Expr')
 runAsIO = iterM run
   where
     run :: Action (IO (Either Problem Expr')) -> IO (Either Problem Expr')
-    run (DoPrint s m) = putStr s >> m
+    run (DoPrint e m) = putStrLn (Friendly.showExprs e) >> m
     run (DoPrompt p f) = f =<< Friendly.showPrompt p
 
 evaluateWithRestart
@@ -88,7 +88,7 @@ functions = [("@print-line", printLine),
              ("@array", doArray)]
   where
     printLine v = lift . lift $ do
-      doPrint (unwords (map output v) ++ "\n")
+      doPrint v
       pure (EVal VNil)
     doArray v = return (EVal (VArr v))
 

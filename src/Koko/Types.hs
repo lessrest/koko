@@ -81,7 +81,7 @@ data Problem = NonexistentImplicitArgument Int
   deriving (Eq, Ord, Show)
 
 data Action a where
-  DoPrint :: String -> a -> Action a
+  DoPrint :: [Expr'] -> a -> Action a
   DoPrompt :: Problem -> (Expr' -> a) -> Action a
   deriving Functor
 
