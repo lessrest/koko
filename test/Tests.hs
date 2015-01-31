@@ -37,6 +37,8 @@ main = hspec $ do
     let (->>) = shouldOutput
 
     "a" ->> []
+    "[ @print a ]" ->> ["a"]
+    "[ @print Hello, world! ]" ->> ["Hello,", "world!"]
 
 ------------------------------------------------------------------------
 
@@ -61,8 +63,9 @@ shouldEvaluateTo s v =
       Left err -> expectationFailure (show err)
       Right e ->
         case evaluate e of
-          Left err -> expectationFailure (show err)
-          Right (v', _) -> v' `shouldBe` v
+          (Left err, _) -> expectationFailure (show err)
+          (Right v', []) -> v' `shouldBe` v
+          (Right _, _) -> expectationFailure "spurious output"
 
 shouldOutput :: String -> [String] -> Spec
 shouldOutput s xs =
@@ -71,5 +74,5 @@ shouldOutput s xs =
       Left err -> expectationFailure (show err)
       Right e ->
         case evaluate e of
-          Left err -> expectationFailure (show err)
-          Right (_, xs') -> xs' `shouldBe` xs
+          (Left err, _) -> expectationFailure (show err)
+          (Right _, xs') -> xs' `shouldBe` xs

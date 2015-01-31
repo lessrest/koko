@@ -3,8 +3,10 @@ module Koko where
 import Control.Applicative
   ((<$>), (<*>), (<*), (*>),
    pure, many)
+  
 import Control.Monad (when)
-import Data.Monoid
+import Control.Monad.Writer (Writer, tell, runWriter)
+import Control.Monad.Trans.Either
 
 import Text.Parsec.Combinator (choice, eof)
 import Text.Parsec.Error (ParseError)
@@ -18,6 +20,7 @@ type Token' = (SourcePos, Token)
 type Stream = [Token']
 type Parser a = Parsec Stream () a
 type Output = [String]
+type Evaluator a = EitherT String (Writer [String]) a
 
 tokenThat :: (Token -> Bool) -> Parser Token
 tokenThat p = token (show . snd) fst p'
@@ -43,14 +46,9 @@ data Expr = EVar String
 
 data Value = VSym String
            | VAbs Expr
+           | VFun String
            | VNil
              deriving (Eq, Show)
-
-type State = (Value, Output)
-
-instance Monoid Value where
-  mempty = VNil
-  mappend _ b = b
 
 expr :: Parsec [Token'] () Expr
 expr = choice [simple, application, abstraction]
@@ -70,15 +68,29 @@ numberedIndex = do
   when (x <= 0) (fail "Variable index must be positive")
   return (EIdx x)
 
-value :: Value -> Either String State
-value v = pure (v, [])
+evaluate :: Expr -> (Either String Value, [String])
+evaluate e = runWriter (runEitherT (evaluate' e))
 
-evaluate :: Expr -> Either String State
-evaluate (ESym s) = value (VSym s)
-evaluate (EAbs e) = value (VAbs e)
-evaluate (EApp e []) = apply =<< evaluate e
-evaluate _ = Left "Evaluation error"
+evaluate' :: Expr -> Evaluator Value
+evaluate' (ESym s) = pure (VSym s)
+evaluate' (EAbs e) = pure (VAbs e)
+evaluate' (EApp e xs) = flip apply xs =<< evaluate' e
+evaluate' (EVar v) = pure (VFun v)
+evaluate' _ = left "Evaluation error"
 
-apply :: State -> Either String State
-apply (VAbs e, _) = evaluate e
-apply _ = Left "Application error"
+functions :: [(String, [Value] -> Evaluator Value)]
+functions = [("@print", doPrint)]
+  where
+    doPrint v = tell (map output v) >> pure VNil
+
+output :: Value -> String
+output (VSym s) = s
+output _ = "<value>"
+
+apply :: Value -> [Expr] -> Evaluator Value
+apply (VAbs e) [] = evaluate' e
+apply (VFun s) vs = do
+  f <- maybe (left "No such function") right (lookup s functions)
+  vs' <- mapM evaluate' vs
+  f vs'
+apply _ _ = left "Application error"
