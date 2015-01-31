@@ -2,6 +2,7 @@ module Main where
 
 import Test.Hspec
 import Koko
+import Koko.Types
 
 main :: IO ()
 main = hspec $ do

@@ -12,12 +12,14 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs: src
-  exposed-modules: Koko
+  exposed-modules:
+    Koko,
+    Koko.Types
   build-depends:
     base == 4.*,
     parsec == 3.1.*,
     either == 4.3.*,
-    mtl == 2.1.*,
+    mtl == 2.2.*,
     free == 4.10.*,
     bound == 1.0.*,
     prelude-extras == 0.4.*
@@ -44,7 +46,7 @@ test-suite tests
     hspec >= 2.0,
     parsec == 3.1.*,
     either == 4.3.*,
-    mtl == 2.1.*,
+    mtl == 2.2.*,
     free == 4.10.*,
     bound == 1.0.*,
     prelude-extras == 0.4.*
