@@ -34,10 +34,10 @@ main = hspec $ do
     "[ { a } ]" =>> VSym "a"
 
   describe "application with arguments" $ do
-    "[ { % } a ]" =>> VSym "a"
-    "[ { % } a b ]" =>> VSym "a"
-    "[ { %1 } a b ]" =>> VSym "a"
-    "[ { %2 } a b ]" =>> VSym "b"
+    "[ { % } a ]"           =>> VSym "a"
+    "[ { % } a b ]"         =>> VSym "a"
+    "[ { %1 } a b ]"        =>> VSym "a"
+    "[ { %2 } a b ]"        =>> VSym "b"
     "[ [ { % } { % } ] a ]" =>> VSym "a"
 
   describe "output" $ do
