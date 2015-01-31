@@ -60,6 +60,10 @@ main = hspec $ do
     
     "[ [ { x : { y : [ @y @x ] } } foo ] @print-line ]" =*> ["foo\n"]
 
+  describe "let" $ do
+    "[ let a x : @a ]" ->> EApp (absN (EVar (Left 1))) [EVal (VSym "x")]
+    "[ let a x b y : [ { [ %1 @b @a ] } @print-line ] ]" =*> ["y x\n"]
+
 ------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr' -> Spec
