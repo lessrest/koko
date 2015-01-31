@@ -42,9 +42,9 @@ main = hspec $ do
 
   describe "output" $ do
     "a"                             =*> []
+    "[ @print-line ]"               =*> ["\n"]
     "[ @print-line a ]"             =*> ["a\n"]
     "[ @print-line Hello, world! ]" =*> ["Hello, world!\n"]
-    "[ [ { @print-line } ] yes ]"   =*> ["yes\n"]
 
 ------------------------------------------------------------------------
 
