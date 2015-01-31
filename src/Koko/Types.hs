@@ -35,9 +35,11 @@ type Parser a = Parsec Stream () a
 data Restart a where
   UncaughtProblem :: Problem -> Restart Expr'
 
-type Evaluator a = EitherT Problem (PromptT Restart (Writer [String])) a
+type Evaluator m a = EitherT Problem (PromptT Restart m) a
+type PromptResult m = m (Either Problem Expr')
 
-type PromptResult = Writer [String] (Either Problem Expr')
+type Base = Writer [String]
+type Evaluator' = Evaluator Base Expr'
 
 data Expr v = EVar v
             | EApp (Expr v) [Expr v]

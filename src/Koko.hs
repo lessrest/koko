@@ -23,10 +23,10 @@ prepare =
     EVal (VArr es) -> xArr es
     EApp e xs -> xApp e xs
 
-execute :: ExecM Expr' -> Evaluator Expr'
+execute :: ExecM Expr' -> Evaluator'
 execute = iterM run
   where
-    run :: Exec (Evaluator Expr') -> Evaluator Expr'
+    run :: Exec Evaluator' -> Evaluator'
     run = \case
       XHalt p   -> left p
       XIdx i f  -> f =<< problem (NonexistentImplicitArgument i)
@@ -48,7 +48,7 @@ evaluate :: Expr' -> Result
 evaluate = evaluateWithRestart (\p _ -> return (Left p))
 
 evaluateWithRestart
-  :: (Problem -> (Expr' -> PromptResult) -> PromptResult)
+  :: (Problem -> (Expr' -> PromptResult Base) -> PromptResult Base)
   -> Expr'
   -> Result
 evaluateWithRestart f =
@@ -56,11 +56,14 @@ evaluateWithRestart f =
   runPromptT return (\(UncaughtProblem p) k -> f p k) (>>=) .
   runEitherT .
   evaluate'
+
+-- evaluateWithRestartM
+--   :: (Problem -> (Expr' -> PromptResult) -> m Prompt
         
-evaluate' :: Expr' -> Evaluator Expr'
+evaluate' :: Expr' -> Evaluator'
 evaluate' = execute . prepare
 
-functions :: [(String, [Expr'] -> Evaluator Expr')]
+functions :: [(String, [Expr'] -> Evaluator')]
 functions = [("@print-line", doPrint),
              ("@array", doArray)]
   where
@@ -74,7 +77,7 @@ output (EVal (VSym s)) = s
 output (EVal _) = "<value>"
 output _ = "<unevaluated>"
 
-apply :: Expr' -> [Expr'] -> Evaluator Expr'
+apply :: Expr' -> [Expr'] -> Evaluator'
 apply (EVal (VAbs e)) es = do
   let f i = es !! (i - 1)
   evaluate' (instantiate f e)
@@ -85,5 +88,5 @@ apply (EVal (VFun s)) es = do
 apply (EVal v) _ = problem (Nonapplicable v)
 apply _ _ = problem UnknownError
 
-problem :: Problem -> Evaluator Expr'
+problem :: Problem -> Evaluator'
 problem = lift . prompt . UncaughtProblem
