@@ -11,6 +11,7 @@ main = hspec $ do
     expectParseFailure "%0"
     expectParseFailure "a b"
     expectParseFailure `mapM_` (map (:"") "[]{}")
+    expectParseFailure "[ ]"
 
   describe "parse successes" $ do
     "@"         ->> EVar "@"
