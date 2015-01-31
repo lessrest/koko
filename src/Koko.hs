@@ -1,13 +1,14 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, GADTs #-}
 module Koko where
 
 import Koko.Types
 
 import Bound (instantiate)
 import Control.Applicative
-import Control.Monad.Trans.Either (runEitherT, left)
-import Control.Monad.Writer (tell, runWriter)
 import Control.Monad.Free
+import Control.Monad.Prompt
+import Control.Monad.Trans.Either (runEitherT, left)
+import Control.Monad.Writer (tell, runWriterT)
 
 prepare :: Expr' -> ExecM Expr'
 prepare =
@@ -26,10 +27,12 @@ execute = iterM run
   where
     run :: Exec (Evaluator Expr') -> Evaluator Expr'
     run = \case
-      XHalt p   -> left (show p)
-      XIdx i _  -> left (show (NonexistentImplicitArgument i))
+      XHalt p   -> left p
+      XIdx i _  -> left (NonexistentImplicitArgument i)
+      XName n f -> case lookup n functions of
+                     Nothing -> left (NonexistentFreeVariable n)
+                     Just _  -> f (EVal (VFun n))
       XNil f    -> f (EVal (VNil))
-      XName n f -> f (EVal (VFun n))
       XSym s f  -> f (EVal (VSym s))
       XAbs x f  -> f (EVal (VAbs x))
       XArr es f -> f =<< EVal . VArr <$> mapM (execute . prepare) es
@@ -38,8 +41,9 @@ execute = iterM run
            es' <- mapM evaluate' es
            f =<< apply e' es'
 
-evaluate :: Expr' -> (Either String Expr', [String])
-evaluate e = runWriter (runEitherT (evaluate' e))
+evaluate :: Expr' -> (Either Problem Expr', [String])
+evaluate e = runPromptC id (\(UncaughtProblem p) _ -> (Left p, []))
+               (runWriterT (runEitherT (evaluate' e)))
 
 evaluate' :: Expr' -> Evaluator Expr'
 evaluate' = execute . prepare
@@ -61,6 +65,6 @@ apply (EVal (VAbs e)) es = do
   let f i = es !! (i - 1)
   evaluate' (instantiate f e)
 apply (EVal (VFun s)) es = do
-  f <- maybe (left $ "No such function " ++ s) pure (lookup s functions)
+  f <- maybe (left $ NonexistentFreeVariable s) pure (lookup s functions)
   f es
-apply _ _ = left "Application error"
+apply (EVal v) _ = left (Nonapplicable v)

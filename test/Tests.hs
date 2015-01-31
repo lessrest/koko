@@ -64,6 +64,11 @@ main = hspec $ do
     "[ let a x : @a ]" ->> EApp (absN (EVar (Left 1))) [EVal (VSym "x")]
     "[ let a x b y : [ { [ %1 @b @a ] } @print-line ] ]" =*> ["y x\n"]
 
+  describe "problems" $ do
+    "@x" `hasProblem` NonexistentFreeVariable "@x"
+    "%1" `hasProblem` NonexistentImplicitArgument 1
+    "[ x ]" `hasProblem` Nonapplicable (VSym "x")
+
 ------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr' -> Spec
@@ -100,3 +105,13 @@ shouldOutput s xs =
         case evaluate e of
           (Left err, _) -> expectationFailure (show err)
           (Right _, xs') -> xs' `shouldBe` xs
+
+hasProblem :: String -> Problem -> Spec
+hasProblem s p =
+  it ("should cause " ++ show p ++ " for `" ++ s ++ "'") $
+    case parse (words s) of
+      Left err -> expectationFailure (show err)
+      Right e ->
+        case evaluate e of
+          (Right x, _) -> expectationFailure ("evaluated to " ++ show x)
+          (Left p', _) -> p' `shouldBe` p

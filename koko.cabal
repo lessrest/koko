@@ -23,7 +23,8 @@ library
     mtl == 2.2.*,
     free == 4.10.*,
     bound == 1.0.*,
-    prelude-extras == 0.4.*
+    prelude-extras == 0.4.*,
+    MonadPrompt == 1.0.*
   default-language: Haskell2010
 
 executable "::"
@@ -50,5 +51,6 @@ test-suite tests
     mtl == 2.2.*,
     free == 4.10.*,
     bound == 1.0.*,
-    prelude-extras == 0.4.*
+    prelude-extras == 0.4.*,
+    MonadPrompt == 1.0.*
   default-language: Haskell2010

@@ -14,10 +14,11 @@ import Bound (Scope, abstract, (>>>=))
 import Control.Applicative
 import Control.Monad.Free
 import Control.Monad.Free.TH
+import Control.Monad.Prompt
 
 import Prelude.Extras (Eq1, Ord1, Show1, Read1)
 import Control.Monad.Trans.Either (EitherT)
-import Control.Monad.Writer (Writer)
+import Control.Monad.Writer (WriterT)
 import Control.Monad (ap)
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
@@ -26,11 +27,15 @@ import Data.List (elemIndex)
 import Text.Parsec.Pos (SourcePos)
 import Text.Parsec.Prim (Parsec)
 
-type Token       = String
-type Token'      = (SourcePos, Token)
-type Stream      = [Token']
-type Parser a    = Parsec Stream () a
-type Evaluator a = EitherT String (Writer [String]) a
+type Token    = String
+type Token'   = (SourcePos, Token)
+type Stream   = [Token']
+type Parser a = Parsec Stream () a
+
+data Restart a where
+  UncaughtProblem :: Problem -> Restart Expr'
+
+type Evaluator a = EitherT Problem (WriterT [String] (Prompt Restart)) a
 
 data Expr v = EVar v
             | EApp (Expr v) [Expr v]
@@ -71,7 +76,9 @@ instance Read1 Expr
 
 data Problem = NonexistentImplicitArgument Int
              | NonexistentFreeVariable String
-  deriving Show
+             | Nonapplicable Value'
+             | UnknownError
+  deriving (Eq, Ord, Show)
 
 data Exec a where
   XHalt :: Problem -> Exec a
