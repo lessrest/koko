@@ -46,6 +46,10 @@ main = hspec $ do
     "[ @print-line a ]"             =*> ["a\n"]
     "[ @print-line Hello, world! ]" =*> ["Hello, world!\n"]
 
+  describe "arrays" $ do
+    "[ @array ]"       =>> VArr []
+    "[ @array a b c ]" =>> VArr (map VSym (words "a b c"))
+
 ------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr -> Spec

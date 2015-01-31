@@ -48,6 +48,7 @@ data Value = VSym String
            | VAbs Expr
            | VFun String
            | VNil
+           | VArr [Value]
              deriving (Eq, Show)
 
 expr :: Parsec [Token'] () Expr
@@ -80,9 +81,11 @@ evaluate' (EIdx i) = (!! (i - 1)) <$> ask
 evaluate' _ = lift (left "Evaluation error")
 
 functions :: [(String, [Value] -> Evaluator Value)]
-functions = [("@print-line", doPrint)]
+functions = [("@print-line", doPrint),
+             ("@array", doArray)]
   where
     doPrint v = tell [unwords (map output v) ++ "\n"] >> pure VNil
+    doArray v = return (VArr v)
 
 output :: Value -> String
 output (VSym s) = s
