@@ -15,7 +15,8 @@ library
   exposed-modules:
     Koko,
     Koko.Types,
-    Koko.Parser
+    Koko.Parser,
+    Koko.Friendly
   build-depends:
     base == 4.*,
     parsec == 3.1.*,

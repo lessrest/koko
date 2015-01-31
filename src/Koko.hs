@@ -2,6 +2,7 @@
 module Koko where
 
 import Koko.Types
+import qualified Koko.Friendly as Friendly
 
 import Bound (instantiate)
 import Control.Applicative
@@ -60,7 +61,7 @@ runAsIO = iterM run
   where
     run :: Action (IO (Either Problem Expr')) -> IO (Either Problem Expr')
     run (DoPrint s m) = putStr s >> m
-    run (DoPrompt p f) = do print (show p)
+    run (DoPrompt p f) = do Friendly.showPrompt p
                             e <- readLn
                             f e
 
