@@ -64,7 +64,7 @@ runAsIO = iterM run
   where
     run :: Action (IO (Either Problem Expr')) -> IO (Either Problem Expr')
     run (DoPrint e m) = putStrLn (Friendly.showExprs e) >> m
-    run (DoPrompt p f) = f =<< Friendly.showPrompt p
+    run (DoPrompt p f) = f =<< Friendly.showPrompt p evaluateIO
 
 evaluateWithRestart
   :: (Problem -> (Expr' -> PromptResult Base) -> PromptResult Base)

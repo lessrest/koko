@@ -2,10 +2,12 @@
 module Koko.Friendly where
 
 import Bound (unscope, Var (..))
+import Control.Monad.Trans (lift)
 import System.Console.Haskeline
 import Text.PrettyPrint.ANSI.Leijen
 
 import Koko.Types
+import Koko.Parser (parse)
 
 showProblem :: Problem -> String
 showProblem =
@@ -18,15 +20,35 @@ showProblem =
         UnknownError ->
           "Unknown error."
 
-showPrompt :: Problem -> IO Expr'
-showPrompt p = runInputT defaultSettings $
-  do outputStrLn $ ":: Error: " ++ showProblem p
-     getInputLine ":: Use value: " >>=
-       \case Nothing -> return (EVal VNil)
-             Just s  -> return (read s)
+showPrompt :: Problem -> (Expr' -> IO (Either Problem Expr')) -> IO Expr'
+showPrompt p eval = runInputT defaultSettings (showPrompt' p eval)
 
+showPrompt' :: (Monad m, MonadException m)
+            => Problem -> (Expr' -> m (Either Problem Expr')) -> InputT m Expr'
+showPrompt' p eval = do
+  outputStrLn . showError . showProblem $ p
+  getInputLine showUseValuePrompt >>=
+    \case Nothing -> return (EVal VNil)
+          Just s ->
+            case parse (words s) of
+              Left err -> do outputStrLn . showError $ show err
+                             showPrompt' p eval
+              Right e ->
+                lift (eval e) >>= \case
+                  Left p' -> showPrompt' p' eval
+                  Right e' -> return e'
+
+showError :: String -> String
+showError s = showDoc $ bold (red $ text "Error!") <+> text s
+
+showUseValuePrompt :: String
+showUseValuePrompt = showDoc $ bold (text "Use value: ")
+
+showDoc :: Doc -> String
+showDoc d = displayS (renderPretty 0.8 72 d) ""
+  
 showExpr :: Expr' -> String
-showExpr e = displayS (renderPretty 0.8 72 (renderExpr e)) ""
+showExpr e = showDoc (renderExpr e)
 
 showExprs :: [Expr'] -> String
 showExprs es = displayS (renderPretty 0.8 72 (hsep (map renderExpr es))) ""
