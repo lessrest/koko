@@ -6,6 +6,7 @@ import qualified Koko.Friendly as Friendly
 
 import Bound (instantiate)
 import Control.Applicative
+import Control.Monad (when)
 import Control.Monad.Free
 import Control.Monad.Trans
 import Control.Monad.Prompt
@@ -31,25 +32,28 @@ execute :: ExecM UxprRV -> Evaluator'
 execute = iterM run
   where
     run :: Exec Evaluator' -> Evaluator'
-    run = \case
-      XAnn a f  -> put a >> f (error "XAnn value should be ignored")
-      XHalt p   -> lift (left p)
-      XIdx i f  -> f =<< problem (NonexistentImplicitArgument i)
-      XName n f -> case lookup n functions of
-                     Just _  -> f (eFun noAnn n)
-                     Nothing ->
-                       case lookup n globals of
-                         Just v  -> f v
-                         Nothing -> problem (NonexistentFreeVariable n)
-      XNil f    -> f (eNil noAnn)
-      XSym s f  -> f (eSym noAnn s)
-      XAbs x f  -> f (eAbs noAnn x)
-      XArr es f -> f =<< eArr noAnn <$> mapM (execute . prepare) es
-      XApp e es f ->
-        do e' <- evaluate' e
-           es' <- mapM evaluate' es
-           f =<< apply e' es'
-
+    run exec = 
+      do ann <- get
+         case exec of
+           XAnn a f -> do when (a /= Ann Nothing) (put a)
+                          f (error "XAnn value should be ignored")
+           XHalt p   -> lift (left p)
+           XIdx i f  -> f =<< problem (NonexistentImplicitArgument i)
+           XName n f -> case lookup n functions of
+                          Just _  -> f (eFun ann n)
+                          Nothing ->
+                            case lookup n globals of
+                              Just v  -> f v
+                              Nothing -> problem (NonexistentFreeVariable n)
+           XNil f    -> f (eNil ann)
+           XSym s f  -> f (eSym ann s)
+           XAbs x f  -> f (eAbs ann x)
+           XArr es f -> f =<< eArr ann <$> mapM (execute . prepare) es
+           XApp e es f ->
+             do e' <- evaluate' e
+                es' <- mapM evaluate' es
+                f =<< apply e' es'
+ 
 type Result = (Either Problem UxprRV, [String])
 
 evaluate :: UxprRV -> Result
@@ -105,10 +109,12 @@ globals :: [(String, UxprRV)]
 globals = [("@nil", eNil noAnn)]
 
 apply :: UxprRV -> [UxprRV] -> Evaluator'
-apply (U _ (EAbs e)) es = do
+apply (U ann (EAbs e)) es = do
   let f i = es !! (i - 1)
+  put ann
   evaluate' (instantiate f e)
-apply (U _ (EFun s)) es = do
+apply (U ann (EFun s)) es = do
+  put ann
   case lookup s functions of
     Nothing -> problem (NonexistentFreeVariable s)
     Just f -> f es
