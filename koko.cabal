@@ -16,6 +16,7 @@ library
     Koko,
     Koko.Types,
     Koko.Parser,
+    Koko.UParser,
     Koko.Friendly
   build-depends:
     base == 4.*,

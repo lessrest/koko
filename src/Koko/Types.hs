@@ -201,3 +201,10 @@ absWithExplicitParameters ps = EVal . VAbs . abstract (either (const Nothing) f)
 
 absP :: [String] -> Expr' -> Expr'
 absP ps = absWithExplicitParameters (map ('@':) ps)
+
+uAbsN :: Ann -> UxprRV -> UxprRV
+uAbsN ann = uAbs ann . abstract (either Just (const Nothing))
+
+uAbsP :: Ann -> [String] -> UxprRV -> UxprRV
+uAbsP ann ps = uAbs ann . abstract (either (const Nothing) f)
+  where f x = (+ 1) <$> elemIndex x ps
