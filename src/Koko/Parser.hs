@@ -48,7 +48,7 @@ expr = expr1 `sepBy1` word "," >>= \case
     index       = (tokenThat (== "%") *> pure (EVar (Left 1))) <|> numberedIndex
 
 mkLet :: [(String, Expr')] -> Expr' -> Expr'
-mkLet ps e = EApp (absP (map fst ps) e) (map snd ps)
+mkLet ps e = EApp (absP (map (fst ps) e) (map snd ps)
 
 numberedIndex :: Parser Expr'
 numberedIndex = do

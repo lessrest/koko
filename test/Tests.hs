@@ -5,9 +5,9 @@ import Test.Hspec
 
 import Control.Monad
 
-import Koko
-import Koko.Types
-import Koko.Parser
+import Koko.Evaluator
+import Koko.UTypes
+import Koko.UParser
 
 main :: IO ()
 main = hspec $ do
@@ -23,21 +23,21 @@ main = hspec $ do
     expectParseFailure "[ ]"
 
   describe "parse successes" $ do
-    "@"         ->> EVar (Right "@")
-    "@foo"      ->> EVar (Right "@foo")
-    "{ }"       ->> absN (EVal VNil)
-    "{ a }"     ->> absN (EVal (VSym "a"))
-    "{ { a } }" ->> absN (absN (EVal (VSym "a")))
-    "[ { a } ]" ->> EApp (absN (EVal (VSym "a"))) []
-    "[ a b c ]" ->> EApp (EVal (VSym "a")) [EVal (VSym "b"), EVal (VSym "c")]
-    "%"         ->> EVar (Left 1)
-    "%1"        ->> EVar (Left 1)
-    "%25"       ->> EVar (Left 25)
+    "@"         ->> eVar noAnn (Right "@")
+    "@foo"      ->> eVar noAnn (Right "@foo")
+    "{ }"       ->> absN noAnn (eNil noAnn)
+    "{ a }"     ->> absN noAnn (eSym noAnn "a")
+    "{ { a } }" ->> absN noAnn (absN noAnn (eSym noAnn "a"))
+    "[ { a } ]" ->> eApp noAnn (absN noAnn (eSym noAnn "a")) []
+    "[ a b c ]" ->> eApp noAnn (eSym noAnn "a") [eSym noAnn "b", eSym noAnn "c"]
+    "%"         ->> eVar noAnn (Left 1)
+    "%1"        ->> eVar noAnn (Left 1)
+    "%25"       ->> eVar noAnn (Left 25)
 
   describe "evaluation" $ do
-    "a"         =>> EVal (VSym "a")
-    "[ { a } ]" =>> EVal (VSym "a")
-    "@nil"      =>> EVal VNil
+    "a"         =>> eSym noAnn "a"
+    "[ { a } ]" =>> eSym noAnn "a"
+    "@nil"      =>> eNil noAnn
 
   describe "application with arguments" $ do
     "[ { % } a ]"           === "a"
@@ -53,12 +53,12 @@ main = hspec $ do
     "[ @print-line Hello, world! ]" =*> ["Hello, world!\n"]
 
   describe "arrays" $ do
-    "[ @array ]"       =>> EVal (VArr [])
-    "[ @array a b c ]" =>> EVal (VArr (map (EVal . VSym) (words "a b c")))
+    "[ @array ]"       =>> eArr noAnn []
+    "[ @array a b c ]" =>> eArr noAnn (map (eSym noAnn) (words "a b c"))
 
   describe "named parameters" $ do
-    "{ a : @a }"   ->> absP ["a"] (EVar (Right "@a"))
-    "{ a b : @a }" ->> absP ["a", "b"] (EVar (Right "@a"))
+    "{ a : @a }"   ->> absP noAnn ["a"] (eVar noAnn (Right "@a"))
+    "{ a b : @a }" ->> absP noAnn ["a", "b"] (eVar noAnn (Right "@a"))
 
     "[ { a b : @b } x y ]"                === "y"
     "[ { a b : [ @b x ] } y { b : @b } ]" === "x"
@@ -66,31 +66,31 @@ main = hspec $ do
     "[ [ { x : { y : [ @y @x ] } } foo ] @print-line ]" =*> ["foo\n"]
 
   describe "let" $ do
-    "[ let a x : @a ]" ->> EApp (absN (EVar (Left 1))) [EVal (VSym "x")]
+    "[ let a x : @a ]" ->> eApp noAnn (absN noAnn (eVar noAnn (Left 1))) [eSym noAnn "x"]
     "[ let a x b y : [ { [ %1 @b @a ] } @print-line ] ]" =*> ["y x\n"]
     "[ let x [ @array 1 2 ] : @x ]" === "[ @array 1 2 ]"
 
   describe "problems" $ do
     "@x" `hasProblem` NonexistentFreeVariable "@x"
     "%1" `hasProblem` NonexistentImplicitArgument 1
-    "[ x ]" `hasProblem` Nonapplicable (EVal (VSym "x"))
+    "[ x ]" `hasProblem` Nonapplicable (eSym noAnn "x")
 
   describe "prompts" $ do
-    shouldPromptAndBe "@x" (EVal VNil) (EVal VNil)
-    shouldPromptAndBe "[ @array @x y ]" (EVal (VNil))
-      (EVal (VArr [EVal (VNil), EVal (VSym "y")]))
+    shouldPromptAndBe "@x" (eNil noAnn) (eNil noAnn)
+    shouldPromptAndBe "[ @array @x y ]" (eNil noAnn)
+      (eArr noAnn [eNil noAnn, eSym noAnn "y"])
 
   describe "sequencing" $ do
     "[ @print-line a ] , [ @print-line b ]" =*> ["a\n", "b\n"]
 
 ------------------------------------------------------------------------
 
-shouldParseTo :: String -> Expr' -> Spec
+shouldParseTo :: String -> UxprRV -> Spec
 shouldParseTo s e =
   it ("should parse `" ++ s ++ "'") $
     case parse (words s) of
       Left err -> expectationFailure (show err)
-      Right e' -> e' `shouldBe` e
+      Right e' -> (strip e') `shouldBe` e
 
 expectParseFailure :: String -> Spec
 expectParseFailure s =
@@ -99,26 +99,26 @@ expectParseFailure s =
       Left _ -> return ()
       Right x -> expectationFailure ("Parsed to (" ++ show x ++ ")")
 
-shouldEvaluateTo :: String -> Expr' -> Spec
+shouldEvaluateTo :: String -> UxprRV -> Spec
 shouldEvaluateTo s v =
   it ("should evaluate `" ++ s ++ "'") $ do
     x <- parseAndEvaluate s
-    x `shouldBe` (Just v)
+    (fmap strip x) `shouldBe` (Just v)
 
-tryParsing :: String -> IO (Maybe Expr')
+tryParsing :: String -> IO (Maybe UxprRV)
 tryParsing s =
   case parse (words s) of
     Left err -> expectationFailure (show err) >> return Nothing
     Right e  -> return (Just e)
 
-tryEvaluating :: Expr' -> IO (Maybe Expr')
+tryEvaluating :: UxprRV -> IO (Maybe UxprRV)
 tryEvaluating e =
   case evaluate e of
     (Right e', []) -> return (Just e')
     (Left err, _)  -> expectationFailure (show err) >> return Nothing
     (Right _, _)   -> expectationFailure "Spurious output." >> return Nothing
 
-parseAndEvaluate :: String -> IO (Maybe Expr')
+parseAndEvaluate :: String -> IO (Maybe UxprRV)
 parseAndEvaluate = tryParsing >=> maybe (return Nothing) tryEvaluating
 
 shouldEvaluateEquivalently :: String -> String -> Spec
@@ -126,7 +126,7 @@ shouldEvaluateEquivalently a b =
   it ("should evaluate `" ++ a ++ "' like `" ++ b ++ "'") $
     do a' <- parseAndEvaluate a
        b' <- parseAndEvaluate b
-       a' `shouldBe` b'
+       fmap strip a' `shouldBe` fmap strip b'
 
 shouldOutput :: String -> [String] -> Spec
 shouldOutput s xs =
@@ -148,7 +148,7 @@ hasProblem s p =
           (Right x, _) -> expectationFailure ("evaluated to " ++ show x)
           (Left p', _) -> p' `shouldBe` p
 
-shouldPromptAndBe:: String -> Expr' -> Expr' -> Spec
+shouldPromptAndBe:: String -> UxprRV -> UxprRV -> Spec
 shouldPromptAndBe s def expected =
   it ("retrying `" ++ s ++ "' w/ `" ++ show def ++ "' should give `"
       ++ show expected ++ "'") $
@@ -156,5 +156,8 @@ shouldPromptAndBe s def expected =
       Left err -> expectationFailure (show err)
       Right e ->
         case evaluateWithRestart (\_ k -> k def) e of
-          (Right e', _) -> e' `shouldBe` expected
+          (Right e', _) -> strip e' `shouldBe` expected
           (Left err, _) -> expectationFailure (show err)
+
+strip :: UxprRV -> UxprRV
+strip = mapAnns (const (Ann Nothing))

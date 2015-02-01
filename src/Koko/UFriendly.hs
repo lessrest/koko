@@ -6,10 +6,10 @@ import Control.Monad.Trans (lift)
 import System.Console.Haskeline
 import Text.PrettyPrint.ANSI.Leijen
 
-import Koko.Types
+import Koko.UTypes
 import Koko.UParser (parse)
 
-showProblem :: Uroblem -> String
+showProblem :: Problem -> String
 showProblem =
   \case NonexistentImplicitArgument i ->
           "The implicit argument %" ++ show i ++ " is not bound."
@@ -20,15 +20,15 @@ showProblem =
         UnknownError ->
           "Unknown error."
 
-showPrompt :: Uroblem -> (UxprRV -> IO (Either Uroblem UxprRV)) -> IO UxprRV
+showPrompt :: Problem -> (UxprRV -> IO (Either Problem UxprRV)) -> IO UxprRV
 showPrompt p eval = runInputT defaultSettings (showPrompt' p eval)
 
 showPrompt' :: (Monad m, MonadException m)
-            => Uroblem -> (UxprRV -> m (Either Uroblem UxprRV)) -> InputT m UxprRV
+            => Problem -> (UxprRV -> m (Either Problem UxprRV)) -> InputT m UxprRV
 showPrompt' p eval = do
   outputStrLn . showError . showProblem $ p
   getInputLine showUseValuePrompt >>=
-    \case Nothing -> return (uNil noAnn)
+    \case Nothing -> return (eNil noAnn)
           Just s ->
             case parse (words s) of
               Left err -> do outputStrLn . showError $ show err
@@ -55,16 +55,16 @@ showExprs es = displayS (renderPretty 0.8 72 (hsep (map renderExpr es))) ""
 
 renderExpr' :: (a -> Doc) -> UxprR a -> Doc
 renderExpr' var (U _ u) = case u of
-  UVar v -> var v
-  UApp e es -> text "[" <+> sep (map (renderExpr' var) (e:es)) <+> text "]"
-  USeq es -> sep . punctuate (text " ,") . map (renderExpr' var) $ es
-  USym s -> text s
-  UFun s -> bold $ text s
-  UNil -> red $ text "@nil"
-  UArr es -> text "[" <+> hang 2 (sep ((bold . yellow $ text "@array") :
+  EVar v -> var v
+  EApp e es -> text "[" <+> sep (map (renderExpr' var) (e:es)) <+> text "]"
+  ESeq es -> sep . punctuate (text " ,") . map (renderExpr' var) $ es
+  ESym s -> text s
+  EFun s -> bold $ text s
+  ENil -> red $ text "@nil"
+  EArr es -> text "[" <+> hang 2 (sep ((bold . yellow $ text "@array") :
                                        map (renderExpr' var) es))
                       <+> text "]"
-  UAbs s -> text "{" <+> hang 2 (renderExpr' (renderScopeVar var) (unscope s))
+  EAbs s -> text "{" <+> hang 2 (renderExpr' (renderScopeVar var) (unscope s))
                      <+> text "}"
 
 

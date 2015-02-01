@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase, GADTs, RankNTypes #-}
 module Koko.Evaluator where
 
-import Koko.Types
+import Koko.UTypes
 import qualified Koko.UFriendly as Friendly
 
 import Bound (instantiate)
@@ -12,63 +12,63 @@ import Control.Monad.Prompt
 import Control.Monad.Trans.Either (runEitherT, left)
 import Control.Monad.Writer (Writer, tell, runWriter)
 
-prepare :: UxprRV -> UxecM UxprRV
+prepare :: UxprRV -> ExecM UxprRV
 prepare (U ann u) =
   case u of
-    UNil -> uxNil
-    UVar (Left v) -> uxIdx v
-    UVar (Right v) -> uxName v
-    USym s -> uxSym s
-    UAbs e -> uxAbs e
-    UFun v -> uxName v
-    UArr es -> uxArr es
-    UApp e xs -> uxApp e xs
-    USeq es -> last <$> mapM prepare es
+    ENil -> xNil
+    EVar (Left v) -> xIdx v
+    EVar (Right v) -> xName v
+    ESym s -> xSym s
+    EAbs e -> xAbs e
+    EFun v -> xName v
+    EArr es -> xArr es
+    EApp e xs -> xApp e xs
+    ESeq es -> last <$> mapM prepare es
 
-execute :: UxecM UxprRV -> Uvaluator'
+execute :: ExecM UxprRV -> Evaluator'
 execute = iterM run
   where
-    run :: Uxec Uvaluator' -> Uvaluator'
+    run :: Exec Evaluator' -> Evaluator'
     run = \case
-      UxHalt p   -> left p
-      UxIdx i f  -> f =<< problem (NonexistentImplicitArgument i)
-      UxName n f -> case lookup n functions of
-                      Just _  -> f (uFun noAnn n)
-                      Nothing ->
-                        case lookup n globals of
-                          Just v  -> f v
-                          Nothing -> problem (NonexistentFreeVariable n)
-      UxNil f    -> f (uNil noAnn)
-      UxSym s f  -> f (uSym noAnn s)
-      UxAbs x f  -> f (uAbs noAnn x)
-      UxArr es f -> f =<< uArr noAnn <$> mapM (execute . prepare) es
-      UxApp e es f ->
+      XHalt p   -> left p
+      XIdx i f  -> f =<< problem (NonexistentImplicitArgument i)
+      XName n f -> case lookup n functions of
+                     Just _  -> f (eFun noAnn n)
+                     Nothing ->
+                       case lookup n globals of
+                         Just v  -> f v
+                         Nothing -> problem (NonexistentFreeVariable n)
+      XNil f    -> f (eNil noAnn)
+      XSym s f  -> f (eSym noAnn s)
+      XAbs x f  -> f (eAbs noAnn x)
+      XArr es f -> f =<< eArr noAnn <$> mapM (execute . prepare) es
+      XApp e es f ->
         do e' <- evaluate' e
            es' <- mapM evaluate' es
            f =<< apply e' es'
 
-type Result = (Either Uroblem UxprRV, [String])
+type Result = (Either Problem UxprRV, [String])
 
 evaluate :: UxprRV -> Result
 evaluate = evaluateWithRestart (\p _ -> return (Left p))
 
-runAsWriter :: Free Uction (Either Uroblem UxprRV) -> Result
+runAsWriter :: Free Action (Either Problem UxprRV) -> Result
 runAsWriter = runWriter . iterM run
   where
-    run :: Uction (Writer [String] (Either Uroblem UxprRV))
-        -> Writer [String] (Either Uroblem UxprRV)
-    run (UDoPrint es m) = tell [Friendly.showExprs es ++ "\n"] >> m
-    run (UDoPrompt _ f) = f (uNil noAnn)
+    run :: Action (Writer [String] (Either Problem UxprRV))
+        -> Writer [String] (Either Problem UxprRV)
+    run (DoPrint es m) = tell [Friendly.showExprs es ++ "\n"] >> m
+    run (DoPrompt _ f) = f (eNil noAnn)
 
-runAsIO :: Free Uction (Either Uroblem UxprRV) -> IO (Either Uroblem UxprRV)
+runAsIO :: Free Action (Either Problem UxprRV) -> IO (Either Problem UxprRV)
 runAsIO = iterM run
   where
-    run :: Uction (IO (Either Uroblem UxprRV)) -> IO (Either Uroblem UxprRV)
-    run (UDoPrint e m) = putStrLn (Friendly.showExprs e) >> m
-    run (UDoPrompt p f) = f =<< Friendly.showPrompt p evaluateIO
+    run :: Action (IO (Either Problem UxprRV)) -> IO (Either Problem UxprRV)
+    run (DoPrint e m) = putStrLn (Friendly.showExprs e) >> m
+    run (DoPrompt p f) = f =<< Friendly.showPrompt p evaluateIO
 
 evaluateWithRestart
-  :: (Uroblem -> (UxprRV -> UromptResult UctionM) -> UromptResult UctionM)
+  :: (Problem -> (UxprRV -> PromptResult ActionM) -> PromptResult ActionM)
   -> UxprRV
   -> Result
 evaluateWithRestart f =
@@ -77,37 +77,37 @@ evaluateWithRestart f =
   runEitherT .
   evaluate'
 
-evaluateIO :: UxprRV -> IO (Either Uroblem UxprRV)
+evaluateIO :: UxprRV -> IO (Either Problem UxprRV)
 evaluateIO =
   runAsIO .
-  runPromptT return (\(UncaughtProblem p) k -> uDoPrompt p >>= k) (>>=) .
+  runPromptT return (\(UncaughtProblem p) k -> doPrompt p >>= k) (>>=) .
   runEitherT .
   evaluate'
         
-evaluate' :: UxprRV -> Uvaluator'
+evaluate' :: UxprRV -> Evaluator'
 evaluate' = execute . prepare
 
-functions :: [(String, [UxprRV] -> Uvaluator')]
+functions :: [(String, [UxprRV] -> Evaluator')]
 functions = [("@print-line", printLine),
              ("@array", doArray)]
   where
     printLine v = lift . lift $ do
-      uDoPrint v
-      pure (uNil noAnn)
-    doArray v = return (uArr noAnn v)
+      doPrint v
+      pure (eNil noAnn)
+    doArray v = return (eArr noAnn v)
 
 globals :: [(String, UxprRV)]
-globals = [("@nil", uNil noAnn)]
+globals = [("@nil", eNil noAnn)]
 
-apply :: UxprRV -> [UxprRV] -> Uvaluator'
-apply (U _ (UAbs e)) es = do
+apply :: UxprRV -> [UxprRV] -> Evaluator'
+apply (U _ (EAbs e)) es = do
   let f i = es !! (i - 1)
   evaluate' (instantiate f e)
-apply (U _ (UFun s)) es = do
+apply (U _ (EFun s)) es = do
   case lookup s functions of
     Nothing -> problem (NonexistentFreeVariable s)
     Just f -> f es
 apply e _ = problem (Nonapplicable e)
 
-problem :: Uroblem -> Uvaluator'
+problem :: Problem -> Evaluator'
 problem = lift . prompt . UncaughtProblem

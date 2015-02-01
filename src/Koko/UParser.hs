@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Koko.UParser where
 
-import Koko.Types
+import Koko.UTypes
 
 import Control.Applicative
 import Control.Monad (when)
@@ -32,31 +32,31 @@ ann = Ann . Just . sourceColumn <$> getPosition
 expr :: Parsec [Token'] () UxprRV
 expr = expr1 `sepBy1` word "," >>= \case
          [e] -> return e
-         es  -> uSeq <$> ann <*> pure es
+         es  -> eSeq <$> ann <*> pure es
          
   where
     expr1       = choice [simple, let', application, try explicit, implicit]
     let'        = do try (word "[" *> word "let")
                      mkLet <$> ann <*> many binding <* word ":" <*> bodyUntil "]"
     binding     = ((,) <$> symbolToken <*> expr1)
-    application = try (word "[" *> (uApp <$> ann <*> expr1 <*> many expr1) <* word "]")
-    explicit    = uAbsP <$> ann <*> (word "{" *> many symbolToken <* word ":")
-                        <*> bodyUntil "}"
-    implicit    = uAbsN <$> ann <*> (word "{" >> bodyUntil "}")
-    bodyUntil t = (word t *> (uNil <$> ann)) <|> (expr <* word t)
+    application = try (word "[" *> (eApp <$> ann <*> expr1 <*> many expr1) <* word "]")
+    explicit    = absP <$> ann <*> (word "{" *> many symbolToken <* word ":")
+                       <*> bodyUntil "}"
+    implicit    = absN <$> ann <*> (word "{" >> bodyUntil "}")
+    bodyUntil t = (word t *> (eNil <$> ann)) <|> (expr <* word t)
     simple      = choice [variable, symbol, index]
-    variable    = uVar <$> ann <*> (Right <$> tokenThat ((== '@') . head))
-    symbol      = uSym <$> ann <*> symbolToken
+    variable    = eVar <$> ann <*> (Right <$> tokenThat ((== '@') . head))
+    symbol      = eSym <$> ann <*> symbolToken
     symbolToken = tokenThat (not . (`elem` "%@[]{}:") . head)
-    index       = (tokenThat (== "%") *> (uVar <$> ann <*> pure (Left 1)))
+    index       = (tokenThat (== "%") *> (eVar <$> ann <*> pure (Left 1)))
                     <|> numberedIndex
 
 mkLet :: Ann -> [(String, UxprRV)] -> UxprRV -> UxprRV
-mkLet ann ps e = uApp ann (uAbsP ann (map fst ps) e) (map snd ps)
+mkLet a ps e = eApp a (absP a (map fst ps) e) (map snd ps)
 
 numberedIndex :: Parser UxprRV
 numberedIndex = do
   (_:s) <- tokenThat ((== '%') . head)
   let [(x, [])] = reads s
   when (x <= 0) (fail "Variable index must be positive")
-  uVar <$> ann <*> pure (Left x)
+  eVar <$> ann <*> pure (Left x)
