@@ -40,24 +40,26 @@ data Uxpr f s v =
   | UAbs s
   deriving (Eq, Ord, Show, Read, Functor)
 
-data UxprR v = U (Uxpr (UxprR v) (Scope Int UxprR v) v)
+type Ann = ()
+
+data UxprR v = U Ann (Uxpr (UxprR v) (Scope Int UxprR v) v)
   deriving (Eq, Ord, Show, Read)
 
 instance Functor UxprR where
-  fmap f (U u) =
+  fmap f (U ann u) =
     case u of
-      UVar v -> U (UVar (f v))
-      UApp u us -> U (UApp (fmap f u) (map (fmap f) us))
+      UVar v -> U ann (UVar (f v))
+      UApp u us -> U ann (UApp (fmap f u) (map (fmap f) us))
 
 instance Monad UxprR where
-  return = U . UVar
-  U e >>= f =
+  return = U () . UVar
+  U ann e >>= f =
     case e of
       UVar v -> f v
-      UApp u us -> U (UApp (u >>= f) (map (>>= f) us))
+      UApp u us -> U ann (UApp (u >>= f) (map (>>= f) us))
 
 instance Applicative UxprR where
-  pure = U . UVar
+  pure = U () . UVar
   (<*>) = ap
 
 instance Eq1 UxprR
