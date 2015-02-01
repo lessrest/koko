@@ -5,7 +5,10 @@
     DeriveTraversable,
     FlexibleContexts,
     GADTs,
-    TemplateHaskell #-}
+    TemplateHaskell,
+    StandaloneDeriving,
+    LambdaCase
+ #-}
 
 module Koko.Types where
 
@@ -30,6 +33,37 @@ type Token    = String
 type Token'   = (SourcePos, Token)
 type Stream   = [Token']
 type Parser a = Parsec Stream () a
+
+data Uxpr f s v =
+    UVar v
+  | UApp f [f]
+  | UAbs s
+  deriving (Eq, Ord, Show, Read, Functor)
+
+data UxprR v = U (Uxpr (UxprR v) (Scope Int UxprR v) v)
+  deriving (Eq, Ord, Show, Read)
+
+instance Functor UxprR where
+  fmap f (U u) =
+    case u of
+      UVar v -> U (UVar (f v))
+      UApp u us -> U (UApp (fmap f u) (map (fmap f) us))
+
+instance Monad UxprR where
+  return = U . UVar
+  U e >>= f =
+    case e of
+      UVar v -> f v
+      UApp u us -> U (UApp (u >>= f) (map (>>= f) us))
+
+instance Applicative UxprR where
+  pure = U . UVar
+  (<*>) = ap
+
+instance Eq1 UxprR
+instance Ord1 UxprR
+instance Show1 UxprR
+instance Read1 UxprR
 
 data Restart a where
   UncaughtProblem :: Problem -> Restart Expr'
