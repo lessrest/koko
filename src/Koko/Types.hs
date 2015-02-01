@@ -40,6 +40,15 @@ data Uxpr f s v =
   | UAbs s
   deriving (Eq, Ord, Show, Read, Functor)
 
+uVar :: Ann -> v -> UxprR v
+uVar ann = U ann . UVar
+
+uApp :: Ann -> UxprR v -> [UxprR v] -> UxprR v
+uApp ann u us = U ann (UApp u us)
+
+uAbs :: Ann -> Scope Int UxprR v -> UxprR v
+uAbs ann = U ann . UAbs
+
 type Ann = ()
 
 data UxprR v = U Ann (Uxpr (UxprR v) (Scope Int UxprR v) v)
