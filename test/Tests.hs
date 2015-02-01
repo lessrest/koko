@@ -76,6 +76,9 @@ main = hspec $ do
     shouldPromptAndBe "[ @array @x y ]" (EVal (VNil))
       (EVal (VArr [EVal (VNil), EVal (VSym "y")]))
 
+  describe "sequencing" $ do
+    "[ @print-line a ] , [ @print-line b ]" =*> ["a\n", "b\n"]
+
 ------------------------------------------------------------------------
 
 shouldParseTo :: String -> Expr' -> Spec

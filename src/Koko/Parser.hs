@@ -1,10 +1,11 @@
+{-# LANGUAGE LambdaCase #-}
 module Koko.Parser where
 
 import Koko.Types
 
 import Control.Applicative
 import Control.Monad (when)
-import Text.Parsec.Combinator (choice, eof)
+import Text.Parsec.Combinator (choice, eof, sepBy1)
 import Text.Parsec.Error (ParseError)
 import Text.Parsec.Pos (newPos)
 import Text.Parsec.Prim (Parsec, token, try)
@@ -26,12 +27,16 @@ skip :: Parser a -> Parser ()
 skip = (>> return ())
 
 expr :: Parsec [Token'] () Expr'
-expr = choice [simple, let', application, try explicit, implicit]
+expr = expr1 `sepBy1` word "," >>= \case
+         [e] -> return e
+         es  -> return $ ESeq es
+         
   where
+    expr1       = choice [simple, let', application, try explicit, implicit]
     let'        = do try (word "[" *> word "let")
                      mkLet <$> many binding <* word ":" <*> bodyUntil "]"
     binding     = ((,) <$> symbolToken <*> symbol)
-    application = try (word "[" *> (EApp <$> expr <*> many expr) <* word "]")
+    application = try (word "[" *> (EApp <$> expr1 <*> many expr1) <* word "]")
     explicit    = absP <$> (word "{" *> many symbolToken <* word ":")
                        <*> bodyUntil "}"
     implicit    = absN <$> (word "{" >> bodyUntil "}")

@@ -58,6 +58,7 @@ renderExpr' var = \case
   EVar v -> var v
   EVal v -> renderVal var v
   EApp e es -> text "[" <+> sep (map (renderExpr' var) (e:es)) <+> text "]"
+  ESeq es -> sep . punctuate (text " ,") . map (renderExpr' var) $ es
 
 renderExpr :: Expr' -> Doc
 renderExpr = renderExpr' renderVar

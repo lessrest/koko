@@ -23,6 +23,7 @@ prepare =
     EVal (VFun v) -> xName v
     EVal (VArr es) -> xArr es
     EApp e xs -> xApp e xs
+    ESeq es -> last <$> mapM prepare es
 
 execute :: ExecM Expr' -> Evaluator'
 execute = iterM run

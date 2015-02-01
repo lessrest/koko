@@ -40,6 +40,7 @@ type PromptResult m = m (Either Problem Expr')
 data Expr v = EVar v
             | EApp (Expr v) [Expr v]
             | EVal (Value v)
+            | ESeq [Expr v]
   deriving (Eq, Ord, Show, Read, Functor, Foldable, Traversable)
 
 data Value v = VSym String
@@ -59,6 +60,7 @@ instance Monad Expr where
     case e of
      EVar v -> f v
      EApp e' es -> EApp (e' >>= f) (map (>>= f) es)
+     ESeq es -> ESeq (map (>>= f) es)
      EVal (VAbs e') -> EVal (VAbs (e' >>>= f))
      EVal (VSym x) -> EVal (VSym x)
      EVal (VFun s) -> EVal (VFun s)
