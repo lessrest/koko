@@ -68,6 +68,7 @@ main = hspec $ do
   describe "let" $ do
     "[ let a x : @a ]" ->> EApp (absN (EVar (Left 1))) [EVal (VSym "x")]
     "[ let a x b y : [ { [ %1 @b @a ] } @print-line ] ]" =*> ["y x\n"]
+    "[ let x [ @array 1 2 ] : @x ]" === "[ @array 1 2 ]"
 
   describe "problems" $ do
     "@x" `hasProblem` NonexistentFreeVariable "@x"
