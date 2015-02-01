@@ -23,6 +23,7 @@ import Control.Monad.Prompt
 
 import Prelude.Extras (Eq1, Ord1, Show1, Read1)
 import Control.Monad.Trans.Either (EitherT)
+import Control.Monad.State (StateT)
 import Control.Monad (ap)
 import Data.List (elemIndex)
 
@@ -132,9 +133,11 @@ instance Show1 UxprR
 instance Read1 UxprR
 
 data Restart a where
-  UncaughtProblem :: Problem -> Restart UxprRV
+  UncaughtProblem :: Ann -> Problem -> Restart UxprRV
 
-type Evaluator m a = EitherT Problem (PromptT Restart m) a
+type ExecState = Ann
+
+type Evaluator m a = StateT ExecState (EitherT Problem (PromptT Restart m)) a
 type PromptResult m = m (Either Problem UxprRV)
 
 type Variable = Either Int String
@@ -147,7 +150,7 @@ data Problem = NonexistentImplicitArgument Int
 
 data Action a where
   DoPrint :: [UxprRV] -> a -> Action a
-  DoPrompt :: Problem -> (UxprRV -> a) -> Action a
+  DoPrompt :: Ann -> Problem -> (UxprRV -> a) -> Action a
   deriving Functor
 
 $(makeFree ''Action)
@@ -157,6 +160,7 @@ type ActionM = Free Action
 type Evaluator' = Evaluator ActionM UxprRV
 
 data Exec a where
+  XAnn  :: Ann -> (UxprRV -> a) -> Exec a
   XHalt :: Problem -> Exec a
   XNil  :: (UxprRV -> a) -> Exec a
   XName :: String -> (UxprRV -> a) -> Exec a

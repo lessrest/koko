@@ -9,33 +9,39 @@ import Text.PrettyPrint.ANSI.Leijen
 import Koko.Types
 import Koko.Parser (parse)
 
-showProblem :: Problem -> String
-showProblem =
-  \case NonexistentImplicitArgument i ->
-          "The implicit argument %" ++ show i ++ " is not bound."
-        NonexistentFreeVariable s ->
-          "The free variable " ++ s ++ " has no definition."
-        Nonapplicable v ->
-          "The value `" ++ show v ++ "' is not a function."
-        UnknownError ->
-          "Unknown error."
+showProblem :: Ann -> Problem -> Doc
+showProblem ann p = text err <+> annotation
+  where
+    annotation = case ann of
+                   Ann Nothing -> text "No source location."
+                   Ann (Just i) -> text ("At token " ++ show i ++ ".")
+    err = case p of
+            NonexistentImplicitArgument i ->
+              "The implicit argument %" ++ show i ++ " is not bound."
+            NonexistentFreeVariable s ->
+              "The free variable " ++ s ++ " has no definition."
+            Nonapplicable v ->
+              "The value `" ++ show v ++ "' is not a function."
+            UnknownError ->
+              "Unknown error."
 
-showPrompt :: Problem -> (UxprRV -> IO (Either Problem UxprRV)) -> IO UxprRV
-showPrompt p eval = runInputT defaultSettings (showPrompt' p eval)
+showPrompt :: Ann -> Problem -> (UxprRV -> IO (Either Problem UxprRV)) -> IO UxprRV
+showPrompt ann p eval = runInputT defaultSettings (showPrompt' ann p eval)
 
 showPrompt' :: (Monad m, MonadException m)
-            => Problem -> (UxprRV -> m (Either Problem UxprRV)) -> InputT m UxprRV
-showPrompt' p eval = do
-  outputStrLn . showError . showProblem $ p
+            => Ann -> Problem -> (UxprRV -> m (Either Problem UxprRV))
+            -> InputT m UxprRV
+showPrompt' ann p eval = do
+  outputStrLn . showError . showDoc . showProblem ann $ p
   getInputLine showUseValuePrompt >>=
     \case Nothing -> return (eNil noAnn)
           Just s ->
             case parse (words s) of
               Left err -> do outputStrLn . showError $ show err
-                             showPrompt' p eval
+                             showPrompt' noAnn p eval
               Right e ->
                 lift (eval e) >>= \case
-                  Left p' -> showPrompt' p' eval
+                  Left p' -> showPrompt' noAnn p' eval
                   Right e' -> return e'
 
 showError :: String -> String

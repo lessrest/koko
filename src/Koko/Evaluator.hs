@@ -10,27 +10,30 @@ import Control.Monad.Free
 import Control.Monad.Trans
 import Control.Monad.Prompt
 import Control.Monad.Trans.Either (runEitherT, left)
+import Control.Monad.State (evalStateT, put, get)
 import Control.Monad.Writer (Writer, tell, runWriter)
 
 prepare :: UxprRV -> ExecM UxprRV
-prepare (U _ u) =
-  case u of
-    ENil -> xNil
-    EVar (Left v) -> xIdx v
-    EVar (Right v) -> xName v
-    ESym s -> xSym s
-    EAbs e -> xAbs e
-    EFun v -> xName v
-    EArr es -> xArr es
-    EApp e xs -> xApp e xs
-    ESeq es -> last <$> mapM prepare es
+prepare (U a u) =
+  do _ <- xAnn a
+     case u of
+       ENil -> xNil
+       EVar (Left v) -> xIdx v
+       EVar (Right v) -> xName v
+       ESym s -> xSym s
+       EAbs e -> xAbs e
+       EFun v -> xName v
+       EArr es -> xArr es
+       EApp e xs -> xApp e xs
+       ESeq es -> last <$> mapM prepare es
 
 execute :: ExecM UxprRV -> Evaluator'
 execute = iterM run
   where
     run :: Exec Evaluator' -> Evaluator'
     run = \case
-      XHalt p   -> left p
+      XAnn a f  -> put a >> f (error "XAnn value should be ignored")
+      XHalt p   -> lift (left p)
       XIdx i f  -> f =<< problem (NonexistentImplicitArgument i)
       XName n f -> case lookup n functions of
                      Just _  -> f (eFun noAnn n)
@@ -58,14 +61,14 @@ runAsWriter = runWriter . iterM run
     run :: Action (Writer [String] (Either Problem UxprRV))
         -> Writer [String] (Either Problem UxprRV)
     run (DoPrint es m) = tell [Friendly.showExprs es ++ "\n"] >> m
-    run (DoPrompt _ f) = f (eNil noAnn)
+    run (DoPrompt ann _ f) = f (eNil ann)
 
 runAsIO :: Free Action (Either Problem UxprRV) -> IO (Either Problem UxprRV)
 runAsIO = iterM run
   where
     run :: Action (IO (Either Problem UxprRV)) -> IO (Either Problem UxprRV)
     run (DoPrint e m) = putStrLn (Friendly.showExprs e) >> m
-    run (DoPrompt p f) = f =<< Friendly.showPrompt p evaluateIO
+    run (DoPrompt ann p f) = f =<< Friendly.showPrompt ann p evaluateIO
 
 evaluateWithRestart
   :: (Problem -> (UxprRV -> PromptResult ActionM) -> PromptResult ActionM)
@@ -73,15 +76,17 @@ evaluateWithRestart
   -> Result
 evaluateWithRestart f =
   runAsWriter .
-  runPromptT return (\(UncaughtProblem p) k -> f p k) (>>=) .
+  runPromptT return (\(UncaughtProblem _ p) k -> f p k) (>>=) .
   runEitherT .
+  flip evalStateT (Ann Nothing) .
   evaluate'
 
 evaluateIO :: UxprRV -> IO (Either Problem UxprRV)
 evaluateIO =
   runAsIO .
-  runPromptT return (\(UncaughtProblem p) k -> doPrompt p >>= k) (>>=) .
+  runPromptT return (\(UncaughtProblem ann p) k -> doPrompt ann p >>= k) (>>=) .
   runEitherT .
+  flip evalStateT (Ann Nothing) .
   evaluate'
         
 evaluate' :: UxprRV -> Evaluator'
@@ -91,7 +96,7 @@ functions :: [(String, [UxprRV] -> Evaluator')]
 functions = [("@print-line", printLine),
              ("@array", doArray)]
   where
-    printLine v = lift . lift $ do
+    printLine v = lift . lift . lift $ do
       doPrint v
       pure (eNil noAnn)
     doArray v = return (eArr noAnn v)
@@ -110,4 +115,4 @@ apply (U _ (EFun s)) es = do
 apply e _ = problem (Nonapplicable e)
 
 problem :: Problem -> Evaluator'
-problem = lift . prompt . UncaughtProblem
+problem p = get >>= \a -> lift . lift . prompt $ UncaughtProblem a p
