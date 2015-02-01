@@ -107,8 +107,7 @@ apply (EVal (VFun s)) es = do
   case lookup s functions of
     Nothing -> problem (NonexistentFreeVariable s)
     Just f -> f es
-apply (EVal v) _ = problem (Nonapplicable v)
-apply _ _ = problem UnknownError
+apply e _ = problem (Nonapplicable e)
 
 problem :: Problem -> Evaluator'
 problem = lift . prompt . UncaughtProblem

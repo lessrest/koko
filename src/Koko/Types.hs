@@ -74,6 +74,9 @@ uArr ann = U ann . UArr
 newtype Ann = Ann (Maybe Int)
   deriving (Eq, Ord, Show, Read)
 
+noAnn :: Ann
+noAnn = Ann Nothing
+
 data UxprR' a v = U a (Uxpr (UxprR' a v) (Scope Int (UxprR' a) v) v)
 type UxprR = UxprR' Ann
 type UxprRV = UxprR Variable
@@ -84,13 +87,16 @@ deriving instance Show v => Show (UxprR v)
 deriving instance Read v => Read (UxprR v)
 
 instance Functor UxprR where
-  fmap f (U ann u) =
-    case u of
+  fmap f (U ann uxpr) =
+    case uxpr of
       UVar v -> U ann (UVar (f v))
       UApp u us -> U ann (UApp (fmap f u) (map (fmap f) us))
       USeq us -> U ann (USeq (map (fmap f) us))
       USym s -> U ann (USym s)
       UFun s -> U ann (UFun s)
+      UAbs s -> U ann (UAbs (fmap f s))
+      UNil -> U ann UNil
+      UArr us -> U ann (UArr (map (fmap f) us))
 
 instance Monad UxprR where
   return = U (Ann Nothing) . UVar
@@ -101,6 +107,9 @@ instance Monad UxprR where
       USeq us -> U ann (USeq (map (>>= f) us))
       USym s -> U ann (USym s)
       UFun s -> U ann (UFun s)
+      UAbs s -> U ann (UAbs (s >>>= f))
+      UNil -> U ann UNil
+      UArr us -> U ann (UArr (map (>>= f) us))
 
 instance Applicative UxprR where
   pure = U (Ann Nothing) . UVar
@@ -111,11 +120,13 @@ instance Ord1 UxprR
 instance Show1 UxprR
 instance Read1 UxprR
 
-data Restart a where
-  UncaughtProblem :: Problem -> Restart Expr'
+data Restart e a where
+  UncaughtProblem :: Problem' e -> Restart e e
 
-type Evaluator m a = EitherT Problem (PromptT Restart m) a
-type PromptResult m = m (Either Problem Expr')
+type Evaluator m a = EitherT (Problem' a) (PromptT (Restart a) m) a
+type PromptResult' m e = m (Either (Problem' e) e)
+type PromptResult m = PromptResult' m Expr'
+type UromptResult m = m (Either Uroblem UxprRV)
 
 data Expr v = EVar v
             | EApp (Expr v) [Expr v]
@@ -156,11 +167,14 @@ instance Ord1 Expr
 instance Show1 Expr
 instance Read1 Expr
 
-data Problem = NonexistentImplicitArgument Int
-             | NonexistentFreeVariable String
-             | Nonapplicable Value'
-             | UnknownError
+data Problem' e = NonexistentImplicitArgument Int
+                | NonexistentFreeVariable String
+                | Nonapplicable e
+                | UnknownError
   deriving (Eq, Ord, Show)
+
+type Problem = Problem' Expr'
+type Uroblem = Problem' UxprRV
 
 data Action a where
   DoPrint :: [Expr'] -> a -> Action a
@@ -172,8 +186,17 @@ $(makeFree ''Action)
 type ActionM = Free Action
 type Base = ActionM
 
+data Uction a where
+  UDoPrint :: [UxprRV] -> a -> Uction a
+  UDoPrompt :: Uroblem -> (UxprRV -> a) -> Uction a
+  deriving Functor
+
+$(makeFree ''Uction)
+
+type UctionM = Free Uction
+
 type Evaluator' = Evaluator Base Expr'
-type Uvaluator' = Evaluator Base UxprRV
+type Uvaluator' = Evaluator UctionM UxprRV
 
 data Exec a where
   XHalt :: Problem -> Exec a
@@ -189,6 +212,21 @@ data Exec a where
 $(makeFree ''Exec)
 
 type ExecM = Free Exec
+
+data Uxec a where
+  UxHalt :: Uroblem -> Uxec a
+  UxNil  :: (UxprRV -> a) -> Uxec a
+  UxName :: String -> (UxprRV -> a) -> Uxec a
+  UxIdx  :: Int -> (UxprRV -> a) -> Uxec a
+  UxSym  :: String -> (UxprRV -> a) -> Uxec a
+  UxAbs  :: Scope Int UxprR Variable -> (UxprRV -> a) -> Uxec a
+  UxApp  :: UxprRV -> [UxprRV] -> (UxprRV -> a) -> Uxec a
+  UxArr  :: [UxprRV] -> (UxprRV -> a) -> Uxec a
+  deriving Functor
+
+$(makeFree ''Uxec)
+
+type UxecM = Free Uxec
 
 absWithImplicitParameters :: Eq a => Expr (Either Int a) -> Expr (Either Int a)
 absWithImplicitParameters = EVal . VAbs . abstract (either Just (const Nothing))
