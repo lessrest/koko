@@ -6,8 +6,8 @@ import Test.Hspec
 import Control.Monad
 
 import Koko.Evaluator
-import Koko.UTypes
-import Koko.UParser
+import Koko.Types
+import Koko.Parser
 
 main :: IO ()
 main = hspec $ do

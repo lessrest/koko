@@ -20,15 +20,15 @@ showProblem =
         UnknownError ->
           "Unknown error."
 
-showPrompt :: Problem -> (Expr' -> IO (Either Problem Expr')) -> IO Expr'
+showPrompt :: Problem -> (UxprRV -> IO (Either Problem UxprRV)) -> IO UxprRV
 showPrompt p eval = runInputT defaultSettings (showPrompt' p eval)
 
 showPrompt' :: (Monad m, MonadException m)
-            => Problem -> (Expr' -> m (Either Problem Expr')) -> InputT m Expr'
+            => Problem -> (UxprRV -> m (Either Problem UxprRV)) -> InputT m UxprRV
 showPrompt' p eval = do
   outputStrLn . showError . showProblem $ p
   getInputLine showUseValuePrompt >>=
-    \case Nothing -> return (EVal VNil)
+    \case Nothing -> return (eNil noAnn)
           Just s ->
             case parse (words s) of
               Left err -> do outputStrLn . showError $ show err
@@ -47,20 +47,28 @@ showUseValuePrompt = showDoc $ bold (text "Use value: ")
 showDoc :: Doc -> String
 showDoc d = displayS (renderPretty 0.8 72 d) ""
   
-showExpr :: Expr' -> String
+showExpr :: UxprRV -> String
 showExpr e = showDoc (renderExpr e)
 
-showExprs :: [Expr'] -> String
+showExprs :: [UxprRV] -> String
 showExprs es = displayS (renderPretty 0.8 72 (hsep (map renderExpr es))) ""
 
-renderExpr' :: (a -> Doc) -> Expr a -> Doc
-renderExpr' var = \case
+renderExpr' :: (a -> Doc) -> UxprR a -> Doc
+renderExpr' var (U _ u) = case u of
   EVar v -> var v
-  EVal v -> renderVal var v
   EApp e es -> text "[" <+> sep (map (renderExpr' var) (e:es)) <+> text "]"
   ESeq es -> sep . punctuate (text " ,") . map (renderExpr' var) $ es
+  ESym s -> text s
+  EFun s -> bold $ text s
+  ENil -> red $ text "@nil"
+  EArr es -> text "[" <+> hang 2 (sep ((bold . yellow $ text "@array") :
+                                       map (renderExpr' var) es))
+                      <+> text "]"
+  EAbs s -> text "{" <+> hang 2 (renderExpr' (renderScopeVar var) (unscope s))
+                     <+> text "}"
 
-renderExpr :: Expr' -> Doc
+
+renderExpr :: UxprRV -> Doc
 renderExpr = renderExpr' renderVar
 
 renderVar :: Variable -> Doc
@@ -68,18 +76,7 @@ renderVar = \case
   Left i  -> green     . text $ "%" ++ show i
   Right s -> dullgreen . text $ s
 
-renderScopeVar :: (a -> Doc) -> Var Int (Expr a) -> Doc
+renderScopeVar :: (a -> Doc) -> Var Int (UxprR a) -> Doc
 renderScopeVar var = \case
   B i -> renderVar (Left i)
   F e -> renderExpr' var e
-
-renderVal :: (a -> Doc) -> Value a -> Doc
-renderVal var = \case
-  VSym s -> text s
-  VFun s -> bold $ text s
-  VNil -> red $ text "@nil"
-  VArr es -> text "[" <+> hang 2 (sep ((bold . yellow $ text "@array") :
-                                       map (renderExpr' var) es))
-                      <+> text "]"
-  VAbs s -> text "{" <+> hang 2 (renderExpr' (renderScopeVar var) (unscope s))
-                     <+> text "}"

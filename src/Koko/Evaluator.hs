@@ -1,8 +1,8 @@
 {-# LANGUAGE LambdaCase, GADTs, RankNTypes #-}
 module Koko.Evaluator where
 
-import Koko.UTypes
-import qualified Koko.UFriendly as Friendly
+import Koko.Types
+import qualified Koko.Friendly as Friendly
 
 import Bound (instantiate)
 import Control.Applicative
@@ -13,7 +13,7 @@ import Control.Monad.Trans.Either (runEitherT, left)
 import Control.Monad.Writer (Writer, tell, runWriter)
 
 prepare :: UxprRV -> ExecM UxprRV
-prepare (U ann u) =
+prepare (U _ u) =
   case u of
     ENil -> xNil
     EVar (Left v) -> xIdx v
