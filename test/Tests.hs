@@ -3,6 +3,8 @@ module Main where
 
 import Test.Hspec
 
+import Control.Monad
+
 import Koko
 import Koko.Types
 import Koko.Parser
@@ -11,6 +13,7 @@ main :: IO ()
 main = hspec $ do
   let (->>) = shouldParseTo
       (=>>) = shouldEvaluateTo
+      (===) = shouldEvaluateEquivalently
       (=*>) = shouldOutput
   
   describe "parse failures" $ do
@@ -37,11 +40,11 @@ main = hspec $ do
     "@nil"      =>> EVal VNil
 
   describe "application with arguments" $ do
-    "[ { % } a ]"           =>> EVal (VSym "a")
-    "[ { % } a b ]"         =>> EVal (VSym "a")
-    "[ { %1 } a b ]"        =>> EVal (VSym "a")
-    "[ { %2 } a b ]"        =>> EVal (VSym "b")
-    "[ [ { % } { % } ] a ]" =>> EVal (VSym "a")
+    "[ { % } a ]"           === "a"
+    "[ { % } a b ]"         === "a"
+    "[ { %1 } a b ]"        === "a"
+    "[ { %2 } a b ]"        === "b"
+    "[ [ { % } { % } ] a ]" === "a"
 
   describe "output" $ do
     "a"                             =*> []
@@ -57,8 +60,8 @@ main = hspec $ do
     "{ a : @a }"   ->> absP ["a"] (EVar (Right "@a"))
     "{ a b : @a }" ->> absP ["a", "b"] (EVar (Right "@a"))
 
-    "[ { a b : @b } x y ]"                =>> EVal (VSym "y")
-    "[ { a b : [ @b x ] } y { b : @b } ]" =>> EVal (VSym "x")
+    "[ { a b : @b } x y ]"                === "y"
+    "[ { a b : [ @b x ] } y { b : @b } ]" === "x"
     
     "[ [ { x : { y : [ @y @x ] } } foo ] @print-line ]" =*> ["foo\n"]
 
@@ -97,14 +100,32 @@ expectParseFailure s =
 
 shouldEvaluateTo :: String -> Expr' -> Spec
 shouldEvaluateTo s v =
-  it ("should evaluate `" ++ s ++ "'") $
-    case parse (words s) of
-      Left err -> expectationFailure (show err)
-      Right e ->
-        case evaluate e of
-          (Left err, _) -> expectationFailure (show err)
-          (Right v', []) -> v' `shouldBe` v
-          (Right _, _) -> expectationFailure "spurious output"
+  it ("should evaluate `" ++ s ++ "'") $ do
+    x <- parseAndEvaluate s
+    x `shouldBe` (Just v)
+
+tryParsing :: String -> IO (Maybe Expr')
+tryParsing s =
+  case parse (words s) of
+    Left err -> expectationFailure (show err) >> return Nothing
+    Right e  -> return (Just e)
+
+tryEvaluating :: Expr' -> IO (Maybe Expr')
+tryEvaluating e =
+  case evaluate e of
+    (Right e', []) -> return (Just e')
+    (Left err, _)  -> expectationFailure (show err) >> return Nothing
+    (Right _, _)   -> expectationFailure "Spurious output." >> return Nothing
+
+parseAndEvaluate :: String -> IO (Maybe Expr')
+parseAndEvaluate = tryParsing >=> maybe (return Nothing) tryEvaluating
+
+shouldEvaluateEquivalently :: String -> String -> Spec
+shouldEvaluateEquivalently a b =
+  it ("should evaluate `" ++ a ++ "' like `" ++ b ++ "'") $
+    do a' <- parseAndEvaluate a
+       b' <- parseAndEvaluate b
+       a' `shouldBe` b'
 
 shouldOutput :: String -> [String] -> Spec
 shouldOutput s xs =

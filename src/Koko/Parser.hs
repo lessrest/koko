@@ -35,7 +35,7 @@ expr = expr1 `sepBy1` word "," >>= \case
     expr1       = choice [simple, let', application, try explicit, implicit]
     let'        = do try (word "[" *> word "let")
                      mkLet <$> many binding <* word ":" <*> bodyUntil "]"
-    binding     = ((,) <$> symbolToken <*> symbol)
+    binding     = ((,) <$> symbolToken <*> expr1)
     application = try (word "[" *> (EApp <$> expr1 <*> many expr1) <* word "]")
     explicit    = absP <$> (word "{" *> many symbolToken <* word ":")
                        <*> bodyUntil "}"
