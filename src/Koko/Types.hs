@@ -7,7 +7,9 @@
     GADTs,
     TemplateHaskell,
     StandaloneDeriving,
-    LambdaCase
+    LambdaCase,
+    TypeSynonymInstances,
+    FlexibleInstances
  #-}
 
 module Koko.Types where
@@ -51,8 +53,13 @@ uAbs ann = U ann . UAbs
 
 type Ann = ()
 
-data UxprR v = U Ann (Uxpr (UxprR v) (Scope Int UxprR v) v)
-  deriving (Eq, Ord, Show, Read)
+data UxprR' a v = U a (Uxpr (UxprR' a v) (Scope Int (UxprR' a) v) v)
+type UxprR = UxprR' Ann
+
+deriving instance Eq v => Eq (UxprR v)
+deriving instance Ord v => Ord (UxprR v)
+deriving instance Show v => Show (UxprR v)
+deriving instance Read v => Read (UxprR v)
 
 instance Functor UxprR where
   fmap f (U ann u) =
