@@ -55,6 +55,7 @@ type Ann = ()
 
 data UxprR' a v = U a (Uxpr (UxprR' a v) (Scope Int (UxprR' a) v) v)
 type UxprR = UxprR' Ann
+type UxprRV = UxprR Variable
 
 deriving instance Eq v => Eq (UxprR v)
 deriving instance Ord v => Ord (UxprR v)
@@ -145,6 +146,7 @@ type ActionM = Free Action
 type Base = ActionM
 
 type Evaluator' = Evaluator Base Expr'
+type Uvaluator' = Evaluator Base UxprRV
 
 data Exec a where
   XHalt :: Problem -> Exec a
