@@ -13,10 +13,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs: src
   exposed-modules:
-    Koko,
     Koko.Types,
     Koko.Parser,
-    Koko.Friendly
+    Koko.Friendly,
+    Koko.Evaluator
   build-depends:
     base == 4.*,
     parsec == 3.1.*,

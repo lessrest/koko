@@ -1,4 +1,4 @@
-import Koko (evaluateIO)
+import Koko.Evaluator (evaluateIO)
 import Koko.Parser (parse)
 
 import Control.Applicative
