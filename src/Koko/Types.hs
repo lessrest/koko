@@ -41,6 +41,7 @@ data Uxpr f s v =
   | UApp f [f]
   | UAbs s
   | USeq [f]
+  | USym String
   deriving (Eq, Ord, Show, Read, Functor)
 
 uVar :: Ann -> v -> UxprR v
@@ -54,6 +55,9 @@ uAbs ann = U ann . UAbs
 
 uSeq :: Ann -> [UxprR v] -> UxprR v
 uSeq ann = U ann . USeq
+
+uSym :: Ann -> String -> UxprR v
+uSym ann = U ann . USym
 
 type Ann = ()
 
@@ -72,6 +76,7 @@ instance Functor UxprR where
       UVar v -> U ann (UVar (f v))
       UApp u us -> U ann (UApp (fmap f u) (map (fmap f) us))
       USeq us -> U ann (USeq (map (fmap f) us))
+      USym s -> U ann (USym s)
 
 instance Monad UxprR where
   return = U () . UVar
@@ -80,6 +85,7 @@ instance Monad UxprR where
       UVar v -> f v
       UApp u us -> U ann (UApp (u >>= f) (map (>>= f) us))
       USeq us -> U ann (USeq (map (>>= f) us))
+      USym s -> U ann (USym s)
 
 instance Applicative UxprR where
   pure = U () . UVar
