@@ -73,7 +73,7 @@ main = hspec $ do
   describe "problems" $ do
     "@x" `hasProblem` NonexistentFreeVariable "@x"
     "%1" `hasProblem` NonexistentImplicitArgument 1
-    "[ x ]" `hasProblem` Nonapplicable (eSym noAnn "x")
+    "[ x ]" `hasProblem` Nonapplicable (eSym (Ann (Just 2)) "x")
 
   describe "prompts" $ do
     shouldPromptAndBe "@x" (eNil noAnn) (eNil noAnn)
