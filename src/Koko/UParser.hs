@@ -7,8 +7,8 @@ import Control.Applicative
 import Control.Monad (when)
 import Text.Parsec.Combinator (choice, eof, sepBy1)
 import Text.Parsec.Error (ParseError)
-import Text.Parsec.Pos (newPos)
-import Text.Parsec.Prim (Parsec, token, try)
+import Text.Parsec.Pos (newPos, sourceColumn)
+import Text.Parsec.Prim (Parsec, token, try, getPosition)
 
 import qualified Text.Parsec.Prim as P
 
@@ -26,13 +26,15 @@ word c = skip (tokenThat (== c))
 skip :: Parser a -> Parser ()
 skip = (>> return ())
 
+ann :: Parsec a b Ann
+ann = Ann . Just . sourceColumn <$> getPosition
+
 expr :: Parsec [Token'] () UxprRV
 expr = expr1 `sepBy1` word "," >>= \case
          [e] -> return e
          es  -> uSeq <$> ann <*> pure es
          
   where
-    ann         = pure ()
     expr1       = choice [simple, let', application, try explicit, implicit]
     let'        = do try (word "[" *> word "let")
                      mkLet <$> ann <*> many binding <* word ":" <*> bodyUntil "]"
@@ -57,4 +59,4 @@ numberedIndex = do
   (_:s) <- tokenThat ((== '%') . head)
   let [(x, [])] = reads s
   when (x <= 0) (fail "Variable index must be positive")
-  return (uVar () (Left x))
+  uVar <$> ann <*> pure (Left x)

@@ -71,7 +71,8 @@ uNil ann = U ann UNil
 uArr :: Ann -> [UxprR v] -> UxprR v
 uArr ann = U ann . UArr
 
-type Ann = ()
+newtype Ann = Ann (Maybe Int)
+  deriving (Eq, Ord, Show, Read)
 
 data UxprR' a v = U a (Uxpr (UxprR' a v) (Scope Int (UxprR' a) v) v)
 type UxprR = UxprR' Ann
@@ -92,7 +93,7 @@ instance Functor UxprR where
       UFun s -> U ann (UFun s)
 
 instance Monad UxprR where
-  return = U () . UVar
+  return = U (Ann Nothing) . UVar
   U ann e >>= f =
     case e of
       UVar v -> f v
@@ -102,7 +103,7 @@ instance Monad UxprR where
       UFun s -> U ann (UFun s)
 
 instance Applicative UxprR where
-  pure = U () . UVar
+  pure = U (Ann Nothing) . UVar
   (<*>) = ap
 
 instance Eq1 UxprR
