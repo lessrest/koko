@@ -25,7 +25,7 @@ He knows a lot about bash. I'm pretty sure he could explain all the various `sho
 
 Anyway, since he's pretty familiar with the lexical syntax of bash scripts, he idly suggested that there should be a language that you can type on the shell without any annoying quotes and stuff. Presumably he had been scripting that day, running various `ruby -pe` commands, using `awk` a lot. I think pure shell commands make my brother feel safe.
 
-But I think he's onto something. A lot of people consider the shell to be a pretty obscure environment. You have to read `man` files and it's so annoying to navigate through them for some reason, and the semantics and quoting rules are like a cubist impression of a programming language. Or it's like a haunted house full of dinosaur ghosts from way before the Mac Era.
+And I think he's onto something. A lot of people consider the shell to be a pretty obscure environment. You have to read `man` files and it's so annoying to navigate through them for some reason, and the semantics and quoting rules are like a cubist impression of a programming language. Or it's like a haunted house full of dinosaur ghosts from way before the Mac Era.
 
 The graphical user interface is the slightly awkward professional smile of the operating system.
 
