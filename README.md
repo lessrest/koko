@@ -33,7 +33,7 @@ A language is a tool for communication.
 
 A computer language is a tool for communicating with computers.
 
-Computer languages, rather than graphical interfaces, should probably be the primary way to communicate with computers.
+Computer languages, rather than graphical interfaces, should probably be the primary way to communicate with computers for a lot of uses.
 
 I got into Haskell a number of years ago. Me and my brother kind of went separate ways, especially after we moved to different cities. I started to roam toward the astral planes of higher-order functional abstractions. I started seriously dabbling in Agda, a language that mostly is used to prove abstract properties about other abstract programs. In these realms, a program is viewed mostly as a mathematical function with a highly interesting structure. 
 I think a lot of people fear the functional realm because they feel it's somehow a bit spacey. They hear about mind-bending stuff like lazy evaluation, recursion, and "monads," and they think it's like science fiction without the lasers. It's like science fiction philosophy. People are talking seriously about stuff like Leibniz's universal algebra, people you know are getting into category theory.
