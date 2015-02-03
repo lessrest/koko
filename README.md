@@ -19,7 +19,7 @@ Yeah, it's an idea me and my brother came up with on the subway ride home from w
 
 He's a shell guy. He knows tons of programming languages and stuff, but he really prefers to just use simple shell scripts, as far as possible.
 
-His perfect Platonic idea of a software project is one that consists of a few shell scripts, a Dockerfile, maybe a Makefile for running various tasks, and maybe a secret file with environment variables.
+His perfect Platonic idea of a software project is one that consists of a few shell scripts, a `Dockerfile`, maybe a `Makefile` for running various tasks, and maybe a secret file with environment variables.
 
 He knows a lot about bash. I'm pretty sure he could explain all the various `shopt` flags in alphabetical order. You could ask him in his sleep about some obscure shell line and he'd probably tell you how to make it better.
 
