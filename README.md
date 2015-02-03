@@ -6,3 +6,9 @@
 $ :: [ @print-line Hello, world! ]
 Hello, world!
 ```
+
+```
+$ :: [ let hey { [ @print-line hello, %1 ] } : [ @hey world! ] , [ @hey you! ] ]
+hello, world!
+hello, you!
+```
